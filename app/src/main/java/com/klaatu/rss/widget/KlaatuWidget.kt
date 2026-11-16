@@ -188,7 +188,7 @@ private fun KlaatuWidgetContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
-                provider = ImageProvider(R.drawable.ic_rss),
+                provider = ImageProvider(R.drawable.ic_gort),
                 contentDescription = "Klaatu",
                 colorFilter = ColorFilter.tint(headerTitleColor),
                 modifier = GlanceModifier.size(22.dp),

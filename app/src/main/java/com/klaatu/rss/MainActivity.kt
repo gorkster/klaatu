@@ -482,7 +482,7 @@ private fun AppIconPicker(onSelected: (String) -> Unit) {
                         Image(
                             painter = painterResource(opt.fgRes),
                             contentDescription = opt.label,
-                            modifier = Modifier.size(64.dp),
+                            modifier = Modifier.size(84.dp),
                         )
                     }
                     Spacer(Modifier.height(4.dp))

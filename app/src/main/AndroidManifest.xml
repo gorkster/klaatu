@@ -18,7 +18,7 @@
 
         <activity-alias
             android:name=".LauncherOpt1"
-            android:enabled="true"
+            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_opt1"
             android:roundIcon="@mipmap/ic_launcher_opt1"
@@ -44,7 +44,7 @@
 
         <activity-alias
             android:name=".LauncherOpt3"
-            android:enabled="false"
+            android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_opt3"
             android:roundIcon="@mipmap/ic_launcher_opt3"

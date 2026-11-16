@@ -1,6 +1,7 @@
 package com.klaatu.rss.sync
 
 import android.content.Context
+import android.util.Log
 import androidx.glance.appwidget.updateAll
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -25,10 +26,12 @@ class FeedSyncWorker(
 
     override suspend fun doWork(): Result {
         val repo = FeedRepository(applicationContext)
+        Log.d("KlaatuSync", "FeedSyncWorker started")
         try {
-            withTimeoutOrNull(25_000L) {
+            val synced = withTimeoutOrNull(25_000L) {
                 repo.syncAllFeeds()
             }
+            Log.d("KlaatuSync", "FeedSyncWorker finished, synced=$synced")
         } finally {
             WidgetPreferences.clearAllRefreshing(applicationContext)
             KlaatuWidget().updateAll(applicationContext)

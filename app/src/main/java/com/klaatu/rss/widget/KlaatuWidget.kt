@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.text.format.DateUtils
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +47,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import coil.imageLoader
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.klaatu.rss.R
@@ -54,6 +56,7 @@ import com.klaatu.rss.sync.FeedSyncWorker
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class WidgetArticleUi(
     val id: Long,
@@ -71,6 +74,7 @@ class RefreshWidgetAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        Log.d("KlaatuWidget", "Refresh tapped for widget $appWidgetId")
         WidgetPreferences.setRefreshing(context, appWidgetId, true)
         KlaatuWidget().update(context, glanceId)
         FeedSyncWorker.enqueueImmediate(context)
@@ -87,7 +91,11 @@ class KlaatuWidget : GlanceAppWidget() {
 
         val totalCount = repo.getWidgetArticleCount(config.categories, config.feedIds)
         val rawArticles = repo.getWidgetArticles(config.categories, config.feedIds, limit = 30)
-        val thumbnails = loadThumbnails(context, rawArticles.map { it.id to it.imageUrl })
+        val thumbnails = loadThumbnails(
+            context = context,
+            items = rawArticles.map { it.id to it.imageUrl },
+            cacheOnly = isRefreshing,
+        )
 
         val uiArticles = if (rawArticles.isEmpty()) {
             listOf(
@@ -138,28 +146,33 @@ class KlaatuWidget : GlanceAppWidget() {
     private suspend fun loadThumbnails(
         context: Context,
         items: List<Pair<Long, String?>>,
-    ): Map<Long, Bitmap> = coroutineScope {
-        val imageLoader = context.imageLoader
-        items.take(25)
-            .filter { !it.second.isNullOrBlank() }
-            .map { (id, url) ->
-                async {
-                    val bitmap = runCatching {
-                        val request = ImageRequest.Builder(context)
-                            .data(url)
-                            .size(264, 180)
-                            .allowHardware(false)
-                            .build()
-                        val result = imageLoader.execute(request) as? SuccessResult
-                        (result?.drawable as? BitmapDrawable)?.bitmap
-                    }.getOrNull()
-                    if (bitmap != null) id to bitmap else null
+        cacheOnly: Boolean,
+    ): Map<Long, Bitmap> = withTimeoutOrNull(if (cacheOnly) 500L else 3_000L) {
+        coroutineScope {
+            val imageLoader = context.imageLoader
+            items.take(25)
+                .filter { !it.second.isNullOrBlank() }
+                .map { (id, url) ->
+                    async {
+                        val bitmap = runCatching {
+                            val builder = ImageRequest.Builder(context)
+                                .data(url)
+                                .size(264, 180)
+                                .allowHardware(false)
+                            if (cacheOnly) {
+                                builder.networkCachePolicy(CachePolicy.DISABLED)
+                            }
+                            val result = imageLoader.execute(builder.build()) as? SuccessResult
+                            (result?.drawable as? BitmapDrawable)?.bitmap
+                        }.getOrNull()
+                        if (bitmap != null) id to bitmap else null
+                    }
                 }
-            }
-            .awaitAll()
-            .filterNotNull()
-            .toMap()
-    }
+                .awaitAll()
+                .filterNotNull()
+                .toMap()
+        }
+    }.orEmpty()
 
     private fun formatRelativeTime(publishedAt: Long): String {
         if (publishedAt <= 0L) return ""
@@ -238,7 +251,7 @@ private fun KlaatuWidgetContent(
                 ) {
                     CircularProgressIndicator(
                         color = headerTitleColor,
-                        modifier = GlanceModifier.size(20.dp),
+                        modifier = GlanceModifier.size(24.dp),
                     )
                 }
             } else {

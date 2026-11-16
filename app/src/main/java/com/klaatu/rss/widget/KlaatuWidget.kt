@@ -2,16 +2,25 @@ package com.klaatu.rss.widget
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.text.format.DateUtils
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -21,6 +30,7 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
@@ -33,44 +43,135 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import com.klaatu.rss.MainActivity
+import com.klaatu.rss.R
+import com.klaatu.rss.data.FeedRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
-data class WidgetArticlePreview(
-    val id: String,
+data class WidgetArticleUi(
+    val id: Long,
     val title: String,
     val source: String,
     val timeAgo: String,
     val url: String,
+    val thumbnail: Bitmap?,
 )
+
+class RefreshWidgetAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        FeedRepository(context).syncAllFeeds()
+        KlaatuWidget().update(context, glanceId)
+    }
+}
 
 class KlaatuWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sampleArticles = listOf(
-            WidgetArticlePreview(
-                id = "1",
-                title = "Welcome to Klaatu — Add your OPML feeds to get started",
-                source = "Klaatu",
-                timeAgo = "Just now",
-                url = "https://github.com/sengelbert/klaatu",
-            ),
-        )
+        val repo = FeedRepository(context)
+        val theme = WidgetPreferences.getTheme(context)
+        val category = WidgetPreferences.getCategory(context)
+
+        val totalCount = repo.getWidgetArticleCount(category)
+        val rawArticles = repo.getWidgetArticles(category, limit = 30)
+        val thumbnails = loadThumbnails(context, rawArticles.map { it.id to it.imageUrl })
+
+        val uiArticles = if (rawArticles.isEmpty()) {
+            listOf(
+                WidgetArticleUi(
+                    id = -1L,
+                    title = "No articles yet — tap ⋮ to import an OPML file or add feeds",
+                    source = "Klaatu",
+                    timeAgo = "Ready",
+                    url = "https://github.com/sengelbert/klaatu",
+                    thumbnail = null,
+                )
+            )
+        } else {
+            rawArticles.map { article ->
+                WidgetArticleUi(
+                    id = article.id,
+                    title = article.title,
+                    source = article.feedTitle,
+                    timeAgo = formatRelativeTime(article.publishedAt),
+                    url = article.link,
+                    thumbnail = thumbnails[article.id],
+                )
+            }
+        }
+
+        val subtitle = "${category ?: "All Feeds"} ($totalCount)"
 
         provideContent {
             GlanceTheme {
-                KlaatuWidgetContent(articles = sampleArticles)
+                KlaatuWidgetContent(
+                    theme = theme,
+                    subtitle = subtitle,
+                    articles = uiArticles,
+                )
             }
         }
+    }
+
+    private suspend fun loadThumbnails(
+        context: Context,
+        items: List<Pair<Long, String?>>,
+    ): Map<Long, Bitmap> = coroutineScope {
+        val imageLoader = context.imageLoader
+        items.take(25)
+            .filter { !it.second.isNullOrBlank() }
+            .map { (id, url) ->
+                async {
+                    val bitmap = runCatching {
+                        val request = ImageRequest.Builder(context)
+                            .data(url)
+                            .size(264, 180)
+                            .allowHardware(false)
+                            .build()
+                        val result = imageLoader.execute(request) as? SuccessResult
+                        (result?.drawable as? BitmapDrawable)?.bitmap
+                    }.getOrNull()
+                    if (bitmap != null) id to bitmap else null
+                }
+            }
+            .awaitAll()
+            .filterNotNull()
+            .toMap()
+    }
+
+    private fun formatRelativeTime(publishedAt: Long): String {
+        if (publishedAt <= 0L) return ""
+        return DateUtils.getRelativeTimeSpanString(
+            publishedAt,
+            System.currentTimeMillis(),
+            DateUtils.MINUTE_IN_MILLIS,
+            DateUtils.FORMAT_ABBREV_RELATIVE,
+        ).toString()
     }
 }
 
 @Composable
-private fun KlaatuWidgetContent(articles: List<WidgetArticlePreview>) {
-    val headerBlue = ColorProvider(Color(0xFF39A7F0))
-    val cardBg = ColorProvider(Color(0xFFFFFFFF))
-    val primaryText = ColorProvider(Color(0xFF1A1C1E))
-    val secondaryText = ColorProvider(Color(0xFF5F6368))
-    val dividerColor = ColorProvider(Color(0xFFE6E8EB))
-    val thumbPlaceholder = ColorProvider(Color(0xFFE1E5EA))
+private fun KlaatuWidgetContent(
+    theme: WidgetThemePreset,
+    subtitle: String,
+    articles: List<WidgetArticleUi>,
+) {
+    val headerBg = ColorProvider(theme.headerBg)
+    val headerTitleColor = ColorProvider(theme.headerTitle)
+    val headerSubtitleColor = ColorProvider(theme.headerSubtitle)
+    val cardBg = ColorProvider(theme.cardBg)
+    val primaryText = ColorProvider(theme.primaryText)
+    val secondaryText = ColorProvider(theme.secondaryText)
+    val dividerColor = ColorProvider(theme.divider)
+    val placeholderBg = ColorProvider(theme.placeholderBg)
 
     Column(
         modifier = GlanceModifier
@@ -78,36 +179,64 @@ private fun KlaatuWidgetContent(articles: List<WidgetArticlePreview>) {
             .background(cardBg)
             .cornerRadius(16.dp),
     ) {
-        // Header bar
+        // Palabre-inspired Header Bar
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .background(headerBlue)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .background(headerBg)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Image(
+                provider = ImageProvider(R.drawable.ic_rss),
+                contentDescription = "Klaatu",
+                colorFilter = ColorFilter.tint(headerTitleColor),
+                modifier = GlanceModifier.size(22.dp),
+            )
+            Spacer(modifier = GlanceModifier.width(10.dp))
             Column(modifier = GlanceModifier.defaultWeight()) {
                 Text(
                     text = "Klaatu",
+                    maxLines = 1,
                     style = TextStyle(
-                        color = ColorProvider(Color.White),
+                        color = headerTitleColor,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                     ),
                 )
                 Text(
-                    text = "All Feeds (${articles.size})",
+                    text = subtitle,
+                    maxLines = 1,
                     style = TextStyle(
-                        color = ColorProvider(Color(0xFFE3F2FD)),
+                        color = headerSubtitleColor,
                         fontSize = 12.sp,
                     ),
                 )
             }
+            Image(
+                provider = ImageProvider(R.drawable.ic_refresh),
+                contentDescription = "Refresh feeds",
+                colorFilter = ColorFilter.tint(headerTitleColor),
+                modifier = GlanceModifier
+                    .size(28.dp)
+                    .padding(4.dp)
+                    .clickable(actionRunCallback<RefreshWidgetAction>()),
+            )
+            Spacer(modifier = GlanceModifier.width(4.dp))
+            Image(
+                provider = ImageProvider(R.drawable.ic_more_vert),
+                contentDescription = "Open Klaatu settings",
+                colorFilter = ColorFilter.tint(headerTitleColor),
+                modifier = GlanceModifier
+                    .size(28.dp)
+                    .padding(4.dp)
+                    .clickable(actionStartActivity<MainActivity>()),
+            )
         }
 
-        // Scrollable article list
+        // Scrollable Article List
         LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
-            items(articles, itemId = { it.id.hashCode().toLong() }) { article ->
+            items(articles, itemId = { it.id }) { article ->
                 val openInBrowser = actionStartActivity(
                     Intent(Intent.ACTION_VIEW, Uri.parse(article.url))
                 )
@@ -122,12 +251,31 @@ private fun KlaatuWidgetContent(articles: List<WidgetArticlePreview>) {
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier = GlanceModifier
-                                .size(width = 88.dp, height = 60.dp)
-                                .background(thumbPlaceholder)
-                                .cornerRadius(8.dp),
-                        ) {}
+                        if (article.thumbnail != null) {
+                            Image(
+                                provider = ImageProvider(article.thumbnail),
+                                contentDescription = article.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = GlanceModifier
+                                    .size(width = 88.dp, height = 60.dp)
+                                    .cornerRadius(8.dp),
+                            )
+                        } else {
+                            Box(
+                                modifier = GlanceModifier
+                                    .size(width = 88.dp, height = 60.dp)
+                                    .background(placeholderBg)
+                                    .cornerRadius(8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Image(
+                                    provider = ImageProvider(R.drawable.ic_rss),
+                                    contentDescription = null,
+                                    colorFilter = ColorFilter.tint(secondaryText),
+                                    modifier = GlanceModifier.size(22.dp),
+                                )
+                            }
+                        }
                         Spacer(modifier = GlanceModifier.width(12.dp))
                         Column(modifier = GlanceModifier.defaultWeight()) {
                             Text(
@@ -141,13 +289,23 @@ private fun KlaatuWidgetContent(articles: List<WidgetArticlePreview>) {
                             )
                             Spacer(modifier = GlanceModifier.height(4.dp))
                             Text(
-                                text = "${article.source} · ${article.timeAgo}",
+                                text = article.source,
                                 maxLines = 1,
                                 style = TextStyle(
                                     color = secondaryText,
                                     fontSize = 12.sp,
                                 ),
                             )
+                            if (article.timeAgo.isNotEmpty()) {
+                                Text(
+                                    text = article.timeAgo,
+                                    maxLines = 1,
+                                    style = TextStyle(
+                                        color = secondaryText,
+                                        fontSize = 11.sp,
+                                    ),
+                                )
+                            }
                         }
                     }
                     Box(

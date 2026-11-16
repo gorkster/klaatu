@@ -2,22 +2,24 @@
 
 A modern, widget-first Android RSS/Atom feed reader built in **Kotlin**, inspired by the classic Palabre scrollable home screen widget.
 
-## Features (Planned & In Progress)
+## Features
 - **Scrollable Home Screen Widget** (Jetpack Glance):
   - Rounded card container with a themed header bar (feed/folder title, item count, refresh action, settings action).
-  - Compact yet readable article rows: rounded thumbnail on the left, 2-line title, and feed favicon + source name + relative timestamp on the right.
+  - Compact yet readable article rows: rounded thumbnail on the left, 2-line title, and source name + relative timestamp on the right.
   - Tapping any article opens it directly in your default browser.
-  - Multiple color themes (Material You Dynamic Color, Classic Blue, AMOLED Dark, Light, Slate, etc.).
-- **OPML Support**: Import and export feed subscriptions and folders/categories via standard OPML XML.
-- **Minimal Companion App** (Jetpack Compose + Material 3): Manage feeds/categories, import/export OPML, and configure per-widget themes and refresh cadence.
+  - 6 built-in color themes: **Classic Blue**, **AMOLED Dark**, **Slate Indigo**, **Modern Light**, **Forest**, and **Warm Sepia**.
+  - Folder/category filtering for the widget.
+- **OPML Support**: Import and export feed subscriptions and folders/categories via standard OPML 2.0 XML (`OpmlCodec`).
+- **RSS 2.0 & Atom Sync**: Background and manual feed fetching (`FeedParser`, `FeedSyncWorker`) with local Room caching and Coil thumbnail loading.
+- **Companion App** (Jetpack Compose + Material 3): Manage feeds/categories, import/export OPML, pick widget color themes, and filter by folder.
 
 ## Tech Stack
 - **Language**: Kotlin
 - **Widget**: Jetpack Glance (`glance-appwidget`, `glance-material3`)
 - **App UI**: Jetpack Compose + Material 3
-- **Persistence**: Room (SQLite)
+- **Persistence**: Room (SQLite + KSP)
 - **Background Sync**: WorkManager
-- **Networking & Parsing**: OkHttp + Android `XmlPullParser` (RSS 2.0, Atom, OPML)
+- **Networking & Parsing**: OkHttp + `javax.xml.parsers` DOM (`OpmlCodec`, `FeedParser`)
 - **Image Loading**: Coil
 
 ## Development Environment Setup

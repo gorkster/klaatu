@@ -29,3 +29,15 @@
 - **Status**: Accepted
 - **Decision**: Install Eclipse Temurin JDK 21 (`~/.local/jdks/jdk-21`) and Android SDK (`~/Android/Sdk`) in user-space rather than system-wide via `dnf`.
 - **Rationale**: Avoids needing root/sudo for toolchain setup, isolates Android builds from the system JRE 25, and provides a reproducible `JAVA_HOME` / `ANDROID_HOME` setup compatible with Android Gradle Plugin.
+
+## ADR-006: Standard DOM XML Parser (`javax.xml.parsers`) for OPML & RSS/Atom
+- **Date**: 2026-11-15
+- **Status**: Accepted
+- **Decision**: Implement `OpmlCodec` and `FeedParser` using `javax.xml.parsers.DocumentBuilderFactory` instead of `android.util.Xml`.
+- **Rationale**: `javax.xml.parsers` is available on both Android (API 26+) and standard JVM, allowing OPML and RSS/Atom parsing and round-trip export to be unit-tested directly on the JVM without Robolectric.
+
+## ADR-007: Preset Widget Color Themes with SharedPreferences Storage
+- **Date**: 2026-11-15
+- **Status**: Accepted
+- **Decision**: Provide curated `WidgetThemePreset` palettes (Classic Blue, AMOLED Dark, Slate Indigo, Modern Light, Forest, Warm Sepia) stored in `SharedPreferences` and applied directly in `KlaatuWidget`.
+- **Rationale**: Gives immediate, reliable visual customization across all Android launchers while keeping widget rendering fast and predictable.

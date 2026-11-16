@@ -53,6 +53,7 @@ import com.klaatu.rss.data.FeedRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class WidgetArticleUi(
     val id: Long,
@@ -73,7 +74,9 @@ class RefreshWidgetAction : ActionCallback {
         WidgetPreferences.setRefreshing(context, appWidgetId, true)
         KlaatuWidget().update(context, glanceId)
         try {
-            FeedRepository(context).syncAllFeeds()
+            withTimeoutOrNull(25_000L) {
+                FeedRepository(context).syncAllFeeds()
+            }
         } finally {
             WidgetPreferences.setRefreshing(context, appWidgetId, false)
             KlaatuWidget().updateAll(context)

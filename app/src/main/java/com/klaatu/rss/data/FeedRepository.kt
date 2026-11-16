@@ -9,19 +9,26 @@ import com.klaatu.rss.data.feed.FeedParser
 import com.klaatu.rss.data.opml.OpmlCodec
 import com.klaatu.rss.data.opml.OpmlFeed
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 class FeedRepository(context: Context) {
 
     private val dao = KlaatuDatabase.getInstance(context).dao()
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .build()
 
     fun observeFeeds(): Flow<List<FeedEntity>> = dao.observeFeeds()
@@ -87,40 +94,49 @@ class FeedRepository(context: Context) {
 
     suspend fun syncAllFeeds(): Int = withContext(Dispatchers.IO) {
         val feeds = dao.getAllFeeds()
-        var syncedCount = 0
-        for (feed in feeds) {
-            runCatching {
-                val request = Request.Builder()
-                    .url(feed.xmlUrl)
-                    .header("User-Agent", "KlaatuRSS/0.1 (Android)")
-                    .build()
-                httpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@use
-                    val bodyStream = response.body?.byteStream() ?: return@use
-                    val parsed = FeedParser.parse(bodyStream, feed.xmlUrl)
-                    val resolvedTitle = parsed.title.ifBlank { feed.title }
-                    dao.updateFeedMetadata(
-                        feedId = feed.id,
-                        title = resolvedTitle,
-                        htmlUrl = parsed.siteUrl.ifBlank { feed.htmlUrl },
-                        fetchedAt = System.currentTimeMillis(),
-                    )
-                    val articles = parsed.articles.map {
-                        ArticleEntity(
-                            feedId = feed.id,
-                            externalId = "${feed.id}:${it.externalId}",
-                            title = it.title,
-                            link = it.link,
-                            imageUrl = it.imageUrl,
-                            publishedAt = it.publishedAt,
-                        )
+        if (feeds.isEmpty()) return@withContext 0
+        val syncedCount = AtomicInteger(0)
+        val semaphore = Semaphore(8)
+
+        coroutineScope {
+            feeds.map { feed ->
+                async {
+                    semaphore.withPermit {
+                        runCatching {
+                            val request = Request.Builder()
+                                .url(feed.xmlUrl)
+                                .header("User-Agent", "KlaatuRSS/0.1 (Android)")
+                                .build()
+                            httpClient.newCall(request).execute().use { response ->
+                                if (!response.isSuccessful) return@use
+                                val bodyStream = response.body?.byteStream() ?: return@use
+                                val parsed = FeedParser.parse(bodyStream, feed.xmlUrl)
+                                val resolvedTitle = parsed.title.ifBlank { feed.title }
+                                dao.updateFeedMetadata(
+                                    feedId = feed.id,
+                                    title = resolvedTitle,
+                                    htmlUrl = parsed.siteUrl.ifBlank { feed.htmlUrl },
+                                    fetchedAt = System.currentTimeMillis(),
+                                )
+                                val articles = parsed.articles.map {
+                                    ArticleEntity(
+                                        feedId = feed.id,
+                                        externalId = "${feed.id}:${it.externalId}",
+                                        title = it.title,
+                                        link = it.link,
+                                        imageUrl = it.imageUrl,
+                                        publishedAt = it.publishedAt,
+                                    )
+                                }
+                                dao.insertArticles(articles)
+                                syncedCount.incrementAndGet()
+                            }
+                        }
                     }
-                    dao.insertArticles(articles)
-                    syncedCount++
                 }
-            }
+            }.awaitAll()
         }
-        syncedCount
+        syncedCount.get()
     }
 
     suspend fun getWidgetArticles(

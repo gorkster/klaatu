@@ -33,7 +33,7 @@ object WidgetPreferences {
     private fun categoriesKey(id: Int) = "categories_$id"
     private fun feedIdsKey(id: Int) = "feed_ids_$id"
     private fun labelKey(id: Int) = "label_$id"
-    private fun refreshingKey(id: Int) = "refreshing_$id"
+    private fun refreshingKey(id: Int) = "refreshing_since_$id"
 
     fun getConfig(context: Context, appWidgetId: Int): WidgetConfig {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -83,14 +83,24 @@ object WidgetPreferences {
             .apply()
     }
 
-    fun isRefreshing(context: Context, appWidgetId: Int): Boolean =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(refreshingKey(appWidgetId), false)
+    private const val REFRESH_TIMEOUT_MS = 30_000L
+
+    fun isRefreshing(context: Context, appWidgetId: Int): Boolean {
+        val since = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getLong(refreshingKey(appWidgetId), 0L)
+        if (since <= 0L) return false
+        val active = System.currentTimeMillis() - since < REFRESH_TIMEOUT_MS
+        if (!active) setRefreshing(context, appWidgetId, false)
+        return active
+    }
 
     fun setRefreshing(context: Context, appWidgetId: Int, refreshing: Boolean) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(refreshingKey(appWidgetId), refreshing)
-            .apply()
+        val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        if (refreshing) {
+            editor.putLong(refreshingKey(appWidgetId), System.currentTimeMillis())
+        } else {
+            editor.remove(refreshingKey(appWidgetId))
+        }
+        editor.apply()
     }
 }

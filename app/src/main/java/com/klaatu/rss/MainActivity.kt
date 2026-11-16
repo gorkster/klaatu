@@ -1,11 +1,15 @@
 package com.klaatu.rss
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -59,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -239,6 +244,17 @@ private fun KlaatuCompanionScreen() {
                 }
             }
 
+            // App Icon Options (Black & White Gort Helmet)
+            item {
+                AppIconPicker(
+                    onSelected = { label ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar("App icon set to $label (launcher updates shortly)")
+                        }
+                    },
+                )
+            }
+
             // Widget Category Filter
             if (categories.isNotEmpty()) {
                 item {
@@ -406,4 +422,104 @@ private fun AddFeedDialog(
             }
         },
     )
+}
+
+private data class AppIconOption(
+    val aliasClass: String,
+    val label: String,
+    val bgRes: Int,
+    val fgRes: Int,
+)
+
+@Composable
+private fun AppIconPicker(onSelected: (String) -> Unit) {
+    val context = LocalContext.current
+    val options = remember {
+        listOf(
+            AppIconOption("com.klaatu.rss.LauncherOpt1", "White / Black", R.drawable.ic_gort_opt1_bg, R.drawable.ic_gort_opt1_fg),
+            AppIconOption("com.klaatu.rss.LauncherOpt2", "Black / White", R.drawable.ic_gort_opt2_bg, R.drawable.ic_gort_opt2_fg),
+            AppIconOption("com.klaatu.rss.LauncherOpt3", "Visor Line", R.drawable.ic_gort_opt1_bg, R.drawable.ic_gort_opt3_fg),
+        )
+    }
+    var activeAlias by remember { mutableStateOf(getActiveLauncherAlias(context, options)) }
+
+    Column {
+        Text("App Drawer Icon", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            options.forEach { opt ->
+                val selected = opt.aliasClass == activeAlias
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(
+                            width = if (selected) 2.dp else 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            shape = RoundedCornerShape(12.dp),
+                        )
+                        .clickable {
+                            setActiveLauncherAlias(context, options, opt.aliasClass)
+                            activeAlias = opt.aliasClass
+                            onSelected(opt.label)
+                        }
+                        .padding(10.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            painter = painterResource(opt.bgRes),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        Image(
+                            painter = painterResource(opt.fgRes),
+                            contentDescription = opt.label,
+                            modifier = Modifier.size(64.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(opt.label, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+private fun getActiveLauncherAlias(context: Context, options: List<AppIconOption>): String {
+    val pm = context.packageManager
+    for (opt in options) {
+        val state = pm.getComponentEnabledSetting(ComponentName(context, opt.aliasClass))
+        if (state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
+            return opt.aliasClass
+        }
+    }
+    return options.first().aliasClass
+}
+
+private fun setActiveLauncherAlias(
+    context: Context,
+    options: List<AppIconOption>,
+    targetAlias: String,
+) {
+    val pm = context.packageManager
+    for (opt in options) {
+        val newState = if (opt.aliasClass == targetAlias) {
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } else {
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+        pm.setComponentEnabledSetting(
+            ComponentName(context, opt.aliasClass),
+            newState,
+            PackageManager.DONT_KILL_APP,
+        )
+    }
 }

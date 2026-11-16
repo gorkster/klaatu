@@ -50,10 +50,10 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.klaatu.rss.R
 import com.klaatu.rss.data.FeedRepository
+import com.klaatu.rss.sync.FeedSyncWorker
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withTimeoutOrNull
 
 data class WidgetArticleUi(
     val id: Long,
@@ -73,14 +73,7 @@ class RefreshWidgetAction : ActionCallback {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
         WidgetPreferences.setRefreshing(context, appWidgetId, true)
         KlaatuWidget().update(context, glanceId)
-        try {
-            withTimeoutOrNull(25_000L) {
-                FeedRepository(context).syncAllFeeds()
-            }
-        } finally {
-            WidgetPreferences.setRefreshing(context, appWidgetId, false)
-            KlaatuWidget().updateAll(context)
-        }
+        FeedSyncWorker.enqueueImmediate(context)
     }
 }
 
@@ -240,7 +233,7 @@ private fun KlaatuWidgetContent(
             }
             if (isRefreshing) {
                 Box(
-                    modifier = GlanceModifier.size(28.dp).padding(4.dp),
+                    modifier = GlanceModifier.size(40.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(
@@ -249,26 +242,33 @@ private fun KlaatuWidgetContent(
                     )
                 }
             } else {
-                Image(
-                    provider = ImageProvider(R.drawable.ic_refresh),
-                    contentDescription = "Refresh feeds",
-                    colorFilter = ColorFilter.tint(headerTitleColor),
+                Box(
                     modifier = GlanceModifier
-                        .size(28.dp)
-                        .padding(4.dp)
+                        .size(40.dp)
                         .clickable(actionRunCallback<RefreshWidgetAction>()),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_refresh),
+                        contentDescription = "Refresh feeds",
+                        colorFilter = ColorFilter.tint(headerTitleColor),
+                        modifier = GlanceModifier.size(22.dp),
+                    )
+                }
+            }
+            Box(
+                modifier = GlanceModifier
+                    .size(40.dp)
+                    .clickable(actionStartActivity(configIntent)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    provider = ImageProvider(R.drawable.ic_settings),
+                    contentDescription = "Configure this widget",
+                    colorFilter = ColorFilter.tint(headerTitleColor),
+                    modifier = GlanceModifier.size(22.dp),
                 )
             }
-            Spacer(modifier = GlanceModifier.width(4.dp))
-            Image(
-                provider = ImageProvider(R.drawable.ic_settings),
-                contentDescription = "Configure this widget",
-                colorFilter = ColorFilter.tint(headerTitleColor),
-                modifier = GlanceModifier
-                    .size(28.dp)
-                    .padding(4.dp)
-                    .clickable(actionStartActivity(configIntent)),
-            )
         }
 
         // Scrollable Article List

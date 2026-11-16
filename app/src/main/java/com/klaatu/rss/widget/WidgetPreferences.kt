@@ -103,4 +103,15 @@ object WidgetPreferences {
         }
         editor.apply()
     }
+
+    fun clearAllRefreshing(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        for (key in prefs.all.keys) {
+            if (key.startsWith("refreshing_since_")) {
+                editor.remove(key)
+            }
+        }
+        editor.apply()
+    }
 }

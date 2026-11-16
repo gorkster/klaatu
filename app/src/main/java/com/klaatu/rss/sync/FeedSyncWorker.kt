@@ -5,13 +5,17 @@ import androidx.glance.appwidget.updateAll
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.klaatu.rss.data.FeedRepository
 import com.klaatu.rss.widget.KlaatuWidget
+import com.klaatu.rss.widget.WidgetPreferences
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 
 class FeedSyncWorker(
@@ -21,13 +25,20 @@ class FeedSyncWorker(
 
     override suspend fun doWork(): Result {
         val repo = FeedRepository(applicationContext)
-        repo.syncAllFeeds()
-        KlaatuWidget().updateAll(applicationContext)
+        try {
+            withTimeoutOrNull(25_000L) {
+                repo.syncAllFeeds()
+            }
+        } finally {
+            WidgetPreferences.clearAllRefreshing(applicationContext)
+            KlaatuWidget().updateAll(applicationContext)
+        }
         return Result.success()
     }
 
     companion object {
         private const val PERIODIC_WORK_NAME = "klaatu_periodic_feed_sync"
+        private const val IMMEDIATE_WORK_NAME = "klaatu_immediate_feed_sync"
 
         fun schedulePeriodic(context: Context, intervalMinutes: Long = 30L) {
             val constraints = Constraints.Builder()
@@ -47,8 +58,14 @@ class FeedSyncWorker(
         }
 
         fun enqueueImmediate(context: Context) {
-            val request = OneTimeWorkRequestBuilder<FeedSyncWorker>().build()
-            WorkManager.getInstance(context).enqueue(request)
+            val request = OneTimeWorkRequestBuilder<FeedSyncWorker>()
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                IMMEDIATE_WORK_NAME,
+                ExistingWorkPolicy.REPLACE,
+                request,
+            )
         }
     }
 }

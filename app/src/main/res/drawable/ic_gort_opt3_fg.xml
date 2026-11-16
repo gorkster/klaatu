@@ -4,19 +4,19 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- White outline ring inside the adaptive icon visible circle -->
+    <!-- White outline ring hugging the outer edge of the 72dp circular icon mask (r=36) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M54,21.5 A32.5,32.5 0 1,1 53.99,21.5 Z"
-        android:strokeWidth="2.5"
+        android:pathData="M54,19 A35,35 0 1,1 53.99,19 Z"
+        android:strokeWidth="3.0"
         android:strokeColor="#FFFFFFFF" />
 
-    <!-- Gort helmet scaled cleanly inside the ring -->
+    <!-- Gort helmet -->
     <group
         android:pivotX="54"
         android:pivotY="54"
-        android:scaleX="0.80"
-        android:scaleY="0.80">
+        android:scaleX="0.92"
+        android:scaleY="0.92">
         <path
             android:fillColor="#FFFFFFFF"
             android:fillType="evenOdd"

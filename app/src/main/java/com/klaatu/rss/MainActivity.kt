@@ -34,6 +34,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
@@ -110,6 +112,7 @@ private fun KlaatuCompanionScreen() {
 
     var activeWidgets by remember { mutableStateOf(loadActiveWidgets(context)) }
     var refreshMinutes by remember { mutableStateOf(WidgetPreferences.getRefreshIntervalMinutes(context)) }
+    var isSubscriptionsExpanded by remember { mutableStateOf(false) }
     var showAddFeedDialog by remember { mutableStateOf(false) }
     var isSyncing by remember { mutableStateOf(false) }
 
@@ -264,7 +267,28 @@ private fun KlaatuCompanionScreen() {
             item {
                 HorizontalDivider()
                 Spacer(Modifier.height(4.dp))
-                Text("Subscriptions", style = MaterialTheme.typography.titleSmall)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = feeds.isNotEmpty()) {
+                            isSubscriptionsExpanded = !isSubscriptionsExpanded
+                        }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Individual Feeds (${feeds.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (feeds.isNotEmpty()) {
+                        Icon(
+                            imageVector = if (isSubscriptionsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isSubscriptionsExpanded) "Collapse feeds" else "Expand feeds",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
 
             if (feeds.isEmpty()) {
@@ -276,7 +300,7 @@ private fun KlaatuCompanionScreen() {
                         modifier = Modifier.padding(vertical = 16.dp),
                     )
                 }
-            } else {
+            } else if (isSubscriptionsExpanded) {
                 items(feeds, key = { it.id }) { feed ->
                     FeedRow(
                         feed = feed,

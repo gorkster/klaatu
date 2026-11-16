@@ -31,6 +31,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -128,6 +130,7 @@ private fun WidgetConfigScreen(
     var selectedCategories by remember { mutableStateOf(initialConfig.categories) }
     var selectedFeedIds by remember { mutableStateOf(initialConfig.feedIds) }
     var customLabel by remember { mutableStateOf(initialConfig.customLabel) }
+    var isFeedsExpanded by remember { mutableStateOf(initialConfig.feedIds.isNotEmpty()) }
     var isSaving by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -330,53 +333,74 @@ private fun WidgetConfigScreen(
                 item {
                     HorizontalDivider()
                     Spacer(Modifier.height(4.dp))
-                    Text("Individual Feeds (optional)", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        "Include specific feeds in addition to (or instead of) folders.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                items(feeds, key = { it.id }) { feed ->
-                    val checked = feed.id in selectedFeedIds
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                selectedFeedIds = if (checked) {
-                                    selectedFeedIds - feed.id
-                                } else {
-                                    selectedFeedIds + feed.id
-                                }
-                            }
-                            .padding(vertical = 2.dp),
+                            .clickable { isFeedsExpanded = !isFeedsExpanded }
+                            .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Checkbox(
-                            checked = checked,
-                            onCheckedChange = { nowChecked ->
-                                selectedFeedIds = if (nowChecked) {
-                                    selectedFeedIds + feed.id
-                                } else {
-                                    selectedFeedIds - feed.id
-                                }
-                            },
-                        )
                         Column(modifier = Modifier.weight(1f)) {
+                            val selectedNote = if (selectedFeedIds.isNotEmpty()) " (${selectedFeedIds.size} selected)" else ""
                             Text(
-                                text = feed.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                "Individual Feeds$selectedNote",
+                                style = MaterialTheme.typography.titleSmall,
                             )
                             Text(
-                                text = feed.category,
+                                "Tap to ${if (isFeedsExpanded) "hide" else "choose"} from ${feeds.size} feeds",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                             )
+                        }
+                        Icon(
+                            imageVector = if (isFeedsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isFeedsExpanded) "Collapse feeds" else "Expand feeds",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                if (isFeedsExpanded) {
+                    items(feeds, key = { it.id }) { feed ->
+                        val checked = feed.id in selectedFeedIds
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedFeedIds = if (checked) {
+                                        selectedFeedIds - feed.id
+                                    } else {
+                                        selectedFeedIds + feed.id
+                                    }
+                                }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { nowChecked ->
+                                    selectedFeedIds = if (nowChecked) {
+                                        selectedFeedIds + feed.id
+                                    } else {
+                                        selectedFeedIds - feed.id
+                                    }
+                                },
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = feed.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = feed.category,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     }
                 }

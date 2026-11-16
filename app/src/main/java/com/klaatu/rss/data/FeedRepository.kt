@@ -117,13 +117,29 @@ class FeedRepository(context: Context) {
         syncedCount
     }
 
-    suspend fun getWidgetArticles(category: String?, limit: Int = 40): List<ArticleWithFeed> =
-        withContext(Dispatchers.IO) {
-            dao.getRecentArticles(category, limit)
-        }
+    suspend fun getWidgetArticles(
+        categories: Set<String>,
+        feedIds: Set<Long>,
+        limit: Int = 40,
+    ): List<ArticleWithFeed> = withContext(Dispatchers.IO) {
+        val showAll = if (categories.isEmpty() && feedIds.isEmpty()) 1 else 0
+        dao.getFilteredArticles(
+            showAll = showAll,
+            categories = categories.ifEmpty { setOf("") }.toList(),
+            feedIds = feedIds.ifEmpty { setOf(-1L) }.toList(),
+            limit = limit,
+        )
+    }
 
-    suspend fun getWidgetArticleCount(category: String?): Int =
-        withContext(Dispatchers.IO) {
-            dao.getArticleCount(category)
-        }
+    suspend fun getWidgetArticleCount(
+        categories: Set<String>,
+        feedIds: Set<Long>,
+    ): Int = withContext(Dispatchers.IO) {
+        val showAll = if (categories.isEmpty() && feedIds.isEmpty()) 1 else 0
+        dao.getFilteredArticleCount(
+            showAll = showAll,
+            categories = categories.ifEmpty { setOf("") }.toList(),
+            feedIds = feedIds.ifEmpty { setOf(-1L) }.toList(),
+        )
+    }
 }

@@ -35,22 +35,31 @@ interface KlaatuDao {
         SELECT a.id, a.title, a.link, a.imageUrl, a.publishedAt, f.title AS feedTitle, f.category AS category
         FROM articles a
         INNER JOIN feeds f ON a.feedId = f.id
-        WHERE (:category IS NULL OR f.category = :category)
+        WHERE (:showAll = 1 OR f.category IN (:categories) OR a.feedId IN (:feedIds))
         ORDER BY a.publishedAt DESC
         LIMIT :limit
         """
     )
-    suspend fun getRecentArticles(category: String?, limit: Int = 50): List<ArticleWithFeed>
+    suspend fun getFilteredArticles(
+        showAll: Int,
+        categories: List<String>,
+        feedIds: List<Long>,
+        limit: Int = 40,
+    ): List<ArticleWithFeed>
 
     @Query(
         """
         SELECT COUNT(*)
         FROM articles a
         INNER JOIN feeds f ON a.feedId = f.id
-        WHERE (:category IS NULL OR f.category = :category)
+        WHERE (:showAll = 1 OR f.category IN (:categories) OR a.feedId IN (:feedIds))
         """
     )
-    suspend fun getArticleCount(category: String?): Int
+    suspend fun getFilteredArticleCount(
+        showAll: Int,
+        categories: List<String>,
+        feedIds: List<Long>,
+    ): Int
 
     @Query("SELECT COUNT(*) FROM articles")
     fun observeTotalArticleCount(): Flow<Int>

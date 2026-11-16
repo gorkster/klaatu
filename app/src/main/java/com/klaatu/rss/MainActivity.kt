@@ -1,5 +1,8 @@
 package com.klaatu.rss
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -9,7 +12,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,10 +32,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,12 +65,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.klaatu.rss.data.FeedRepository
 import com.klaatu.rss.data.db.FeedEntity
 import com.klaatu.rss.sync.FeedSyncWorker
 import com.klaatu.rss.widget.KlaatuWidget
+import com.klaatu.rss.widget.KlaatuWidgetReceiver
+import com.klaatu.rss.widget.WidgetConfig
+import com.klaatu.rss.widget.WidgetConfigActivity
 import com.klaatu.rss.widget.WidgetPreferences
-import com.klaatu.rss.widget.WidgetThemePreset
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -88,18 +95,27 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun KlaatuCompanionScreen() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val repo = remember { FeedRepository(context) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val feeds by repo.observeFeeds().collectAsState(initial = emptyList())
-    val categories by repo.observeCategories().collectAsState(initial = emptyList())
     val articleCount by repo.observeTotalArticleCount().collectAsState(initial = 0)
 
-    var selectedTheme by remember { mutableStateOf(WidgetPreferences.getTheme(context)) }
-    var selectedCategory by remember { mutableStateOf(WidgetPreferences.getCategory(context)) }
+    var activeWidgets by remember { mutableStateOf(loadActiveWidgets(context)) }
     var showAddFeedDialog by remember { mutableStateOf(false) }
     var isSyncing by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                activeWidgets = loadActiveWidgets(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val importOpmlLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -200,75 +216,30 @@ private fun KlaatuCompanionScreen() {
                 }
             }
 
-            // Widget Theme Picker
+            // Active Widgets Section
             item {
-                Text("Widget Theme", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    WidgetThemePreset.entries.forEach { preset ->
-                        val isSelected = preset == selectedTheme
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                    shape = RoundedCornerShape(20.dp),
-                                )
-                                .clickable {
-                                    selectedTheme = preset
-                                    WidgetPreferences.setTheme(context, preset)
-                                    scope.launch { KlaatuWidget().updateAll(context) }
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(14.dp)
-                                    .clip(CircleShape)
-                                    .background(preset.headerBg)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(preset.displayName, style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
+                Text("Home Screen Widgets", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(4.dp))
+                if (activeWidgets.isEmpty()) {
+                    Text(
+                        "No widgets placed yet. Long-press your home screen → Widgets → Klaatu Feed to add one or more widgets.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
-            // Widget Category Filter
-            if (categories.isNotEmpty()) {
-                item {
-                    Text("Widget Folder", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        FilterChip(
-                            selected = selectedCategory == null,
-                            onClick = {
-                                selectedCategory = null
-                                WidgetPreferences.setCategory(context, null)
-                                scope.launch { KlaatuWidget().updateAll(context) }
-                            },
-                            label = { Text("All Feeds") },
-                        )
-                        categories.forEach { cat ->
-                            FilterChip(
-                                selected = selectedCategory == cat,
-                                onClick = {
-                                    selectedCategory = cat
-                                    WidgetPreferences.setCategory(context, cat)
-                                    scope.launch { KlaatuWidget().updateAll(context) }
-                                },
-                                label = { Text(cat) },
-                            )
-                        }
-                    }
+            if (activeWidgets.isNotEmpty()) {
+                items(activeWidgets, key = { it.appWidgetId }) { widgetConfig ->
+                    WidgetConfigRow(
+                        config = widgetConfig,
+                        onClick = {
+                            val intent = Intent(context, WidgetConfigActivity::class.java).apply {
+                                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetConfig.appWidgetId)
+                            }
+                            context.startActivity(intent)
+                        },
+                    )
                 }
             }
 
@@ -323,6 +294,61 @@ private fun KlaatuCompanionScreen() {
                     }
                 }
             },
+        )
+    }
+}
+
+private fun loadActiveWidgets(context: android.content.Context): List<WidgetConfig> {
+    val manager = AppWidgetManager.getInstance(context)
+    val ids = manager.getAppWidgetIds(ComponentName(context, KlaatuWidgetReceiver::class.java))
+    return ids.map { WidgetPreferences.getConfig(context, it) }
+}
+
+@Composable
+private fun WidgetConfigRow(
+    config: WidgetConfig,
+    onClick: () -> Unit,
+) {
+    val label = config.customLabel.ifBlank {
+        when {
+            config.categories.isEmpty() && config.feedIds.isEmpty() -> "All Feeds"
+            config.categories.isNotEmpty() -> config.categories.sorted().joinToString(" + ")
+            else -> "${config.feedIds.size} Feed(s)"
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .clip(CircleShape)
+                .background(config.theme.headerBg),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "Widget #${config.appWidgetId} · ${config.theme.displayName}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            Icons.Default.Settings,
+            contentDescription = "Configure widget",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

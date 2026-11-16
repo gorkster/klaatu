@@ -1,5 +1,6 @@
 package com.klaatu.rss.widget
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -16,9 +17,9 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
@@ -46,7 +47,6 @@ import androidx.glance.unit.ColorProvider
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
-import com.klaatu.rss.MainActivity
 import com.klaatu.rss.R
 import com.klaatu.rss.data.FeedRepository
 import kotlinx.coroutines.async
@@ -76,19 +76,19 @@ class RefreshWidgetAction : ActionCallback {
 class KlaatuWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        val config = WidgetPreferences.getConfig(context, appWidgetId)
         val repo = FeedRepository(context)
-        val theme = WidgetPreferences.getTheme(context)
-        val category = WidgetPreferences.getCategory(context)
 
-        val totalCount = repo.getWidgetArticleCount(category)
-        val rawArticles = repo.getWidgetArticles(category, limit = 30)
+        val totalCount = repo.getWidgetArticleCount(config.categories, config.feedIds)
+        val rawArticles = repo.getWidgetArticles(config.categories, config.feedIds, limit = 30)
         val thumbnails = loadThumbnails(context, rawArticles.map { it.id to it.imageUrl })
 
         val uiArticles = if (rawArticles.isEmpty()) {
             listOf(
                 WidgetArticleUi(
                     id = -1L,
-                    title = "No articles yet — tap the gear icon to import an OPML file or add feeds",
+                    title = "No articles yet — tap the gear icon to configure feeds or import OPML",
                     source = "Klaatu",
                     timeAgo = "Ready",
                     url = "https://github.com/sengelbert/klaatu",
@@ -108,13 +108,19 @@ class KlaatuWidget : GlanceAppWidget() {
             }
         }
 
-        val subtitle = "${category ?: "All Feeds"} ($totalCount)"
+        val subtitle = config.resolveSubtitle(totalCount)
+        val configIntent = Intent(context, WidgetConfigActivity::class.java).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            data = Uri.parse("klaatu://widget/$appWidgetId")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
 
         provideContent {
             GlanceTheme {
                 KlaatuWidgetContent(
-                    theme = theme,
+                    theme = config.theme,
                     subtitle = subtitle,
+                    configIntent = configIntent,
                     articles = uiArticles,
                 )
             }
@@ -162,6 +168,7 @@ class KlaatuWidget : GlanceAppWidget() {
 private fun KlaatuWidgetContent(
     theme: WidgetThemePreset,
     subtitle: String,
+    configIntent: Intent,
     articles: List<WidgetArticleUi>,
 ) {
     val headerBg = ColorProvider(theme.headerBg)
@@ -225,12 +232,12 @@ private fun KlaatuWidgetContent(
             Spacer(modifier = GlanceModifier.width(4.dp))
             Image(
                 provider = ImageProvider(R.drawable.ic_settings),
-                contentDescription = "Open Klaatu settings",
+                contentDescription = "Configure this widget",
                 colorFilter = ColorFilter.tint(headerTitleColor),
                 modifier = GlanceModifier
                     .size(28.dp)
                     .padding(4.dp)
-                    .clickable(actionStartActivity<MainActivity>()),
+                    .clickable(actionStartActivity(configIntent)),
             )
         }
 

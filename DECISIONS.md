@@ -41,3 +41,9 @@
 - **Status**: Accepted
 - **Decision**: Provide curated `WidgetThemePreset` palettes (Classic Blue, AMOLED Dark, Slate Indigo, Modern Light, Forest, Warm Sepia) stored in `SharedPreferences` and applied directly in `KlaatuWidget`.
 - **Rationale**: Gives immediate, reliable visual customization across all Android launchers while keeping widget rendering fast and predictable.
+
+## ADR-008: Per-Widget Configuration (`appWidgetId`) for Multi-Widget Support
+- **Date**: 2026-11-16
+- **Status**: Accepted
+- **Decision**: Key `WidgetPreferences` by `appWidgetId` and provide `WidgetConfigActivity` (`ACTION_APPWIDGET_CONFIGURE` + `reconfigurable` widget feature) so each widget instance independently selects its OPML folders, individual feeds, custom label, and theme.
+- **Rationale**: Allows users with large, grouped OPML files to place multiple specialized widgets on their home screen (e.g., *Android + Linux* on one widget, *Finance* on another) and reconfigure each directly from its gear icon.

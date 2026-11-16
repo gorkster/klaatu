@@ -24,6 +24,9 @@ interface KlaatuDao {
     @Query("UPDATE feeds SET title = :title, htmlUrl = :htmlUrl, lastFetchedAt = :fetchedAt WHERE id = :feedId")
     suspend fun updateFeedMetadata(feedId: Long, title: String, htmlUrl: String, fetchedAt: Long)
 
+    @Query("UPDATE feeds SET xmlUrl = :xmlUrl WHERE id = :feedId")
+    suspend fun updateFeedUrl(feedId: Long, xmlUrl: String)
+
     @Query("UPDATE feeds SET category = :category, title = :title WHERE xmlUrl = :xmlUrl")
     suspend fun updateFeedCategoryByUrl(xmlUrl: String, category: String, title: String)
 

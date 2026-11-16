@@ -103,14 +103,25 @@ class FeedRepository(context: Context) {
                 async {
                     semaphore.withPermit {
                         runCatching {
-                            val request = Request.Builder()
-                                .url(feed.xmlUrl)
-                                .header("User-Agent", "KlaatuRSS/0.1 (Android)")
-                                .build()
-                            httpClient.newCall(request).execute().use { response ->
-                                if (!response.isSuccessful) return@use
-                                val bodyStream = response.body?.byteStream() ?: return@use
-                                val parsed = FeedParser.parse(bodyStream, feed.xmlUrl)
+                            val initialUrl = if (feed.xmlUrl.startsWith("http://", ignoreCase = true)) {
+                                "https://" + feed.xmlUrl.substring(7)
+                            } else {
+                                feed.xmlUrl
+                            }
+                            val response = executeFeedRequest(initialUrl)
+                                ?: if (initialUrl != feed.xmlUrl) executeFeedRequest(feed.xmlUrl) else null
+                            response?.use { res ->
+                                val bodyStream = res.body?.byteStream() ?: return@use
+                                val finalUrl = res.request.url.toString()
+                                val upgradedUrl = when {
+                                    finalUrl.startsWith("https://", ignoreCase = true) -> finalUrl
+                                    initialUrl != feed.xmlUrl && res.request.url.isHttps -> initialUrl
+                                    else -> null
+                                }
+                                if (upgradedUrl != null && upgradedUrl != feed.xmlUrl) {
+                                    runCatching { dao.updateFeedUrl(feed.id, upgradedUrl) }
+                                }
+                                val parsed = FeedParser.parse(bodyStream, upgradedUrl ?: feed.xmlUrl)
                                 val resolvedTitle = parsed.title.ifBlank { feed.title }
                                 dao.updateFeedMetadata(
                                     feedId = feed.id,
@@ -138,6 +149,20 @@ class FeedRepository(context: Context) {
         }
         syncedCount.get()
     }
+
+    private fun executeFeedRequest(url: String): okhttp3.Response? = runCatching {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", "KlaatuRSS/0.1 (Android)")
+            .build()
+        val response = httpClient.newCall(request).execute()
+        if (response.isSuccessful) {
+            response
+        } else {
+            response.close()
+            null
+        }
+    }.getOrNull()
 
     suspend fun getWidgetArticles(
         categories: Set<String>,

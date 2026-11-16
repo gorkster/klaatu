@@ -30,7 +30,7 @@ object OpmlCodec {
         val document = factory.newDocumentBuilder().parse(inputStream)
         document.documentElement.normalize()
 
-        val body = document.getElementsByTagName("body").item(0) ?: return emptyList()
+        val body = findFirstElementByTagIgnoreCase(document.documentElement, "body") ?: return emptyList()
         val results = mutableListOf<OpmlFeed>()
         collectOutlines(body, currentCategory = null, out = results)
         return results.distinctBy { it.xmlUrl }
@@ -48,21 +48,56 @@ object OpmlCodec {
                 continue
             }
             val element = node as Element
-            val xmlUrl = element.getAttribute("xmlUrl").trim()
-            val label = element.getAttribute("title").ifBlank { element.getAttribute("text") }.trim()
+            val xmlUrl = attrIgnoreCase(element, "xmlUrl").trim()
+            val label = attrIgnoreCase(element, "title").ifBlank { attrIgnoreCase(element, "text") }.trim()
 
             if (xmlUrl.isNotEmpty()) {
+                val explicitCategory = attrIgnoreCase(element, "category")
+                    .trim()
+                    .trimStart('/')
+                    .substringBefore(',')
+                    .trim()
+                val resolvedCategory = explicitCategory
+                    .ifBlank { currentCategory.orEmpty() }
+                    .ifBlank { OpmlFeed.DEFAULT_CATEGORY }
+
                 out += OpmlFeed(
                     title = label.ifBlank { xmlUrl },
                     xmlUrl = xmlUrl,
-                    htmlUrl = element.getAttribute("htmlUrl").trim(),
-                    category = currentCategory?.takeIf { it.isNotBlank() } ?: OpmlFeed.DEFAULT_CATEGORY,
+                    htmlUrl = attrIgnoreCase(element, "htmlUrl").trim(),
+                    category = resolvedCategory,
                 )
             } else {
                 val nextCategory = label.ifBlank { currentCategory }
                 collectOutlines(element, nextCategory, out)
             }
         }
+    }
+
+    private fun findFirstElementByTagIgnoreCase(root: Element, tagName: String): Element? {
+        if (root.tagName.equals(tagName, ignoreCase = true)) return root
+        val children = root.childNodes
+        for (i in 0 until children.length) {
+            val node = children.item(i)
+            if (node.nodeType == Node.ELEMENT_NODE) {
+                val found = findFirstElementByTagIgnoreCase(node as Element, tagName)
+                if (found != null) return found
+            }
+        }
+        return null
+    }
+
+    private fun attrIgnoreCase(element: Element, name: String): String {
+        val direct = element.getAttribute(name)
+        if (direct.isNotEmpty()) return direct
+        val attrs = element.attributes
+        for (i in 0 until attrs.length) {
+            val attr = attrs.item(i)
+            if (attr.nodeName.equals(name, ignoreCase = true)) {
+                return attr.nodeValue.orEmpty()
+            }
+        }
+        return ""
     }
 
     fun export(feeds: List<OpmlFeed>, documentTitle: String = "Klaatu Subscriptions"): String {

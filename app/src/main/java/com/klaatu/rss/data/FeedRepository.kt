@@ -40,6 +40,16 @@ class FeedRepository(context: Context) {
             )
         }
         val inserted = dao.insertFeeds(entities)
+        // Update category/title for any existing feeds so re-importing OPML updates folders cleanly
+        parsed.forEachIndexed { index, opmlFeed ->
+            if (inserted[index] == -1L) {
+                dao.updateFeedCategoryByUrl(
+                    xmlUrl = opmlFeed.xmlUrl,
+                    category = opmlFeed.category,
+                    title = opmlFeed.title,
+                )
+            }
+        }
         inserted.count { it != -1L }
     }
 

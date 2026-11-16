@@ -52,4 +52,25 @@ class OpmlCodecTest {
         val reimported = OpmlCodec.parse(exported.byteInputStream())
         assertEquals(original, reimported)
     }
+
+    @Test
+    fun parse_lowercaseAttributesAndCategoryAttribute() {
+        val opml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <OPML version="2.0">
+              <BODY>
+                <outline text="Sports">
+                  <outline type="rss" text="ESPN" xmlurl="https://espn.com/rss" htmlurl="https://espn.com" />
+                </outline>
+                <outline type="rss" title="CNN" xmlUrl="https://cnn.com/rss" category="News" />
+              </BODY>
+            </OPML>
+        """.trimIndent()
+
+        val feeds = OpmlCodec.parse(opml.byteInputStream())
+        assertEquals(2, feeds.size)
+        assertEquals("Sports", feeds[0].category)
+        assertEquals("https://espn.com/rss", feeds[0].xmlUrl)
+        assertEquals("News", feeds[1].category)
+    }
 }

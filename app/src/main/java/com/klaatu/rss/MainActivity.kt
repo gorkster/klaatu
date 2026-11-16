@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +39,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -106,6 +109,7 @@ private fun KlaatuCompanionScreen() {
     val articleCount by repo.observeTotalArticleCount().collectAsState(initial = 0)
 
     var activeWidgets by remember { mutableStateOf(loadActiveWidgets(context)) }
+    var refreshMinutes by remember { mutableStateOf(WidgetPreferences.getRefreshIntervalMinutes(context)) }
     var showAddFeedDialog by remember { mutableStateOf(false) }
     var isSyncing by remember { mutableStateOf(false) }
 
@@ -218,6 +222,18 @@ private fun KlaatuCompanionScreen() {
                 }
             }
 
+            // Background Refresh Frequency
+            item {
+                RefreshFrequencySection(
+                    selectedMinutes = refreshMinutes,
+                    onSelect = { minutes ->
+                        refreshMinutes = minutes
+                        WidgetPreferences.setRefreshIntervalMinutes(context, minutes)
+                        FeedSyncWorker.schedulePeriodic(context, minutes)
+                    },
+                )
+            }
+
             // Active Widgets Section
             item {
                 Text("Home Screen Widgets", style = MaterialTheme.typography.titleSmall)
@@ -304,6 +320,39 @@ private fun loadActiveWidgets(context: android.content.Context): List<WidgetConf
     val manager = AppWidgetManager.getInstance(context)
     val ids = manager.getAppWidgetIds(ComponentName(context, KlaatuWidgetReceiver::class.java))
     return ids.map { WidgetPreferences.getConfig(context, it) }
+}
+
+@Composable
+private fun RefreshFrequencySection(
+    selectedMinutes: Long,
+    onSelect: (Long) -> Unit,
+) {
+    val options = remember {
+        listOf(
+            15L to "15m",
+            30L to "30m",
+            60L to "1h",
+            180L to "3h",
+            360L to "6h",
+            0L to "Manual",
+        )
+    }
+    Column {
+        Text("Background Refresh", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { (minutes, label) ->
+                FilterChip(
+                    selected = selectedMinutes == minutes,
+                    onClick = { onSelect(minutes) },
+                    label = { Text(label) },
+                )
+            }
+        }
+    }
 }
 
 @Composable

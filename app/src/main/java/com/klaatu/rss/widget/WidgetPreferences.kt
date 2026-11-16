@@ -26,6 +26,8 @@ data class WidgetConfig(
 
 object WidgetPreferences {
     private const val PREFS_NAME = "klaatu_widget_prefs"
+    private const val KEY_REFRESH_MINUTES = "refresh_interval_minutes"
+    const val DEFAULT_REFRESH_MINUTES = 30L
 
     private fun themeKey(id: Int) = "theme_id_$id"
     private fun themeModeKey(id: Int) = "theme_mode_$id"
@@ -113,5 +115,16 @@ object WidgetPreferences {
             }
         }
         editor.apply()
+    }
+
+    fun getRefreshIntervalMinutes(context: Context): Long =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getLong(KEY_REFRESH_MINUTES, DEFAULT_REFRESH_MINUTES)
+
+    fun setRefreshIntervalMinutes(context: Context, minutes: Long) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_REFRESH_MINUTES, minutes)
+            .apply()
     }
 }

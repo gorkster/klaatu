@@ -11,7 +11,7 @@ A modern, widget-first Android RSS/Atom feed reader built in **Kotlin**, inspire
   - 10 cheerful Material-inspired color themes (with **Vibrant** & **Soft Pastel** light headers + matching **Dark** / **Follow Device** modes): **Baby Blue**, **Light Orange**, **Yellow**, **Purple**, **Pink**, **Coral Red**, **Green**, **Mint Teal**, **Periwinkle**, and **Monochrome**.
 - **OPML Support**: Import and export feed subscriptions and folders/categories via standard OPML 2.0 XML (`OpmlCodec`).
 - **RSS 2.0 & Atom Sync**: Background and manual feed fetching (`FeedParser`, `FeedSyncWorker`) with local Room caching and Coil thumbnail loading.
-- **Companion App** (Jetpack Compose + Material 3): Manage feeds/categories, import/export OPML, and view/configure all placed home screen widgets.
+- **Companion App** (Jetpack Compose + Material 3): Manage feeds/categories, import/export OPML, set background refresh frequency (`15m` / `30m` / `1h` / `3h` / `6h` / `Manual`), and view/configure all placed home screen widgets.
 
 ## Tech Stack
 - **Language**: Kotlin

@@ -40,7 +40,14 @@ class FeedSyncWorker(
         private const val PERIODIC_WORK_NAME = "klaatu_periodic_feed_sync"
         private const val IMMEDIATE_WORK_NAME = "klaatu_immediate_feed_sync"
 
-        fun schedulePeriodic(context: Context, intervalMinutes: Long = 30L) {
+        fun schedulePeriodic(
+            context: Context,
+            intervalMinutes: Long = WidgetPreferences.getRefreshIntervalMinutes(context),
+        ) {
+            if (intervalMinutes <= 0L) {
+                WorkManager.getInstance(context).cancelUniqueWork(PERIODIC_WORK_NAME)
+                return
+            }
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()

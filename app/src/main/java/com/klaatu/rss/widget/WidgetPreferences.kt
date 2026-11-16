@@ -4,7 +4,7 @@ import android.content.Context
 
 data class WidgetConfig(
     val appWidgetId: Int,
-    val theme: WidgetThemePreset = WidgetThemePreset.MATERIAL_BLUE,
+    val theme: WidgetThemePreset = WidgetThemePreset.BABY_BLUE,
     val themeMode: WidgetThemeMode = WidgetThemeMode.SYSTEM,
     val headerStyle: WidgetHeaderStyle = WidgetHeaderStyle.BOLD,
     val categories: Set<String> = emptySet(),

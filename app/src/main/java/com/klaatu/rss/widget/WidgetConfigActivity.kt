@@ -133,6 +133,13 @@ private fun WidgetConfigScreen(
     var isFeedsExpanded by remember { mutableStateOf(initialConfig.feedIds.isNotEmpty()) }
     var isSaving by remember { mutableStateOf(false) }
 
+    val activeFeedCount = feeds.count { it.category in selectedCategories || it.id in selectedFeedIds }
+    val sortedFeeds = remember(feeds, selectedCategories, selectedFeedIds) {
+        feeds.sortedByDescending {
+            (it.category in selectedCategories) || (it.id in selectedFeedIds)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -316,10 +323,12 @@ private fun WidgetConfigScreen(
                             FilterChip(
                                 selected = isSelected,
                                 onClick = {
-                                    selectedCategories = if (isSelected) {
-                                        selectedCategories - cat
+                                    if (isSelected) {
+                                        selectedCategories = selectedCategories - cat
+                                        val catFeedIds = feeds.filter { it.category == cat }.map { it.id }.toSet()
+                                        selectedFeedIds = selectedFeedIds - catFeedIds
                                     } else {
-                                        selectedCategories + cat
+                                        selectedCategories = selectedCategories + cat
                                     }
                                 },
                                 label = { Text(cat) },
@@ -341,13 +350,13 @@ private fun WidgetConfigScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            val selectedNote = if (selectedFeedIds.isNotEmpty()) " (${selectedFeedIds.size} selected)" else ""
+                            val countNote = if (activeFeedCount > 0) " ($activeFeedCount active)" else " (All ${feeds.size})"
                             Text(
-                                "Individual Feeds$selectedNote",
+                                "Individual Feeds$countNote",
                                 style = MaterialTheme.typography.titleSmall,
                             )
                             Text(
-                                "Tap to ${if (isFeedsExpanded) "hide" else "choose"} from ${feeds.size} feeds",
+                                "Tap to ${if (isFeedsExpanded) "hide" else "fine-tune or mix across folders"}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -361,30 +370,34 @@ private fun WidgetConfigScreen(
                 }
 
                 if (isFeedsExpanded) {
-                    items(feeds, key = { it.id }) { feed ->
-                        val checked = feed.id in selectedFeedIds
+                    items(sortedFeeds, key = { it.id }) { feed ->
+                        val inSelectedCategory = feed.category in selectedCategories
+                        val checked = inSelectedCategory || (feed.id in selectedFeedIds)
+                        val toggleFeed: (Boolean) -> Unit = { nowChecked ->
+                            if (nowChecked) {
+                                selectedFeedIds = selectedFeedIds + feed.id
+                            } else {
+                                if (inSelectedCategory) {
+                                    val siblingIds = feeds
+                                        .filter { it.category == feed.category && it.id != feed.id }
+                                        .map { it.id }
+                                    selectedCategories = selectedCategories - feed.category
+                                    selectedFeedIds = selectedFeedIds + siblingIds - feed.id
+                                } else {
+                                    selectedFeedIds = selectedFeedIds - feed.id
+                                }
+                            }
+                        }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    selectedFeedIds = if (checked) {
-                                        selectedFeedIds - feed.id
-                                    } else {
-                                        selectedFeedIds + feed.id
-                                    }
-                                }
+                                .clickable { toggleFeed(!checked) }
                                 .padding(vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(
                                 checked = checked,
-                                onCheckedChange = { nowChecked ->
-                                    selectedFeedIds = if (nowChecked) {
-                                        selectedFeedIds + feed.id
-                                    } else {
-                                        selectedFeedIds - feed.id
-                                    }
-                                },
+                                onCheckedChange = toggleFeed,
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(

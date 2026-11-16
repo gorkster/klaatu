@@ -3,8 +3,26 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Outer ring -->
     <path
-        android:fillColor="#FF000000"
-        android:fillType="evenOdd"
-        android:pathData="M54,23 C39,23 31,33 31,48 L31,64 C31,73 40,80 54,80 C68,80 77,73 77,64 L77,48 C77,33 69,23 54,23 Z M37,44 L71,44 C72.5,44 73,45 73,47 C73,49 72.5,50 71,50 L37,50 C35.5,50 35,49 35,47 C35,45 35.5,44 37,44 Z" />
+        android:fillColor="#00000000"
+        android:pathData="M54,19 A35,35 0 1,1 53.99,19 Z"
+        android:strokeWidth="3.0"
+        android:strokeColor="#FF000000" />
+
+    <!-- Gort helmet with visor cutout, chin seam, and visor line -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.92"
+        android:scaleY="0.92">
+        <path
+            android:fillColor="#FF000000"
+            android:fillType="evenOdd"
+            android:pathData="M54,23 C38,23 30,33.5 30,49 L30,64.5 C30,74.5 39.5,82 54,82 C68.5,82 78,74.5 78,64.5 L78,49 C78,33.5 70,23 54,23 Z M36.5,45.5 L71.5,45.5 C73.5,45.5 74.5,47 74.5,49.5 C74.5,52 73.5,53.5 71.5,53.5 L36.5,53.5 C34.5,53.5 33.5,52 33.5,49.5 C33.5,47 34.5,45.5 36.5,45.5 Z M45,67 L63,67 L63,68.8 L45,68.8 Z" />
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M38,48.6 L70,48.6 C70.8,48.6 71.3,49 71.3,49.5 C71.3,50 70.8,50.4 70,50.4 L38,50.4 C37.2,50.4 36.7,50 36.7,49.5 C36.7,49 37.2,48.6 38,48.6 Z" />
+    </group>
 </vector>

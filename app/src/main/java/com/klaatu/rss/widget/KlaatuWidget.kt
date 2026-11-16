@@ -20,6 +20,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.CircularProgressIndicator
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
@@ -27,6 +28,7 @@ import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -68,8 +70,15 @@ class RefreshWidgetAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters,
     ) {
-        FeedRepository(context).syncAllFeeds()
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        WidgetPreferences.setRefreshing(context, appWidgetId, true)
         KlaatuWidget().update(context, glanceId)
+        try {
+            FeedRepository(context).syncAllFeeds()
+        } finally {
+            WidgetPreferences.setRefreshing(context, appWidgetId, false)
+            KlaatuWidget().updateAll(context)
+        }
     }
 }
 
@@ -78,6 +87,7 @@ class KlaatuWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
         val config = WidgetPreferences.getConfig(context, appWidgetId)
+        val isRefreshing = WidgetPreferences.isRefreshing(context, appWidgetId)
         val repo = FeedRepository(context)
 
         val totalCount = repo.getWidgetArticleCount(config.categories, config.feedIds)
@@ -120,6 +130,7 @@ class KlaatuWidget : GlanceAppWidget() {
                 KlaatuWidgetContent(
                     theme = config.theme,
                     subtitle = subtitle,
+                    isRefreshing = isRefreshing,
                     configIntent = configIntent,
                     articles = uiArticles,
                 )
@@ -168,6 +179,7 @@ class KlaatuWidget : GlanceAppWidget() {
 private fun KlaatuWidgetContent(
     theme: WidgetThemePreset,
     subtitle: String,
+    isRefreshing: Boolean,
     configIntent: Intent,
     articles: List<WidgetArticleUi>,
 ) {
@@ -220,15 +232,27 @@ private fun KlaatuWidgetContent(
                     ),
                 )
             }
-            Image(
-                provider = ImageProvider(R.drawable.ic_refresh),
-                contentDescription = "Refresh feeds",
-                colorFilter = ColorFilter.tint(headerTitleColor),
-                modifier = GlanceModifier
-                    .size(28.dp)
-                    .padding(4.dp)
-                    .clickable(actionRunCallback<RefreshWidgetAction>()),
-            )
+            if (isRefreshing) {
+                Box(
+                    modifier = GlanceModifier.size(28.dp).padding(4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(
+                        color = headerTitleColor,
+                        modifier = GlanceModifier.size(20.dp),
+                    )
+                }
+            } else {
+                Image(
+                    provider = ImageProvider(R.drawable.ic_refresh),
+                    contentDescription = "Refresh feeds",
+                    colorFilter = ColorFilter.tint(headerTitleColor),
+                    modifier = GlanceModifier
+                        .size(28.dp)
+                        .padding(4.dp)
+                        .clickable(actionRunCallback<RefreshWidgetAction>()),
+                )
+            }
             Spacer(modifier = GlanceModifier.width(4.dp))
             Image(
                 provider = ImageProvider(R.drawable.ic_settings),

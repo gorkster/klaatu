@@ -98,11 +98,7 @@ class FeedRepository(context: Context) {
                     if (!response.isSuccessful) return@use
                     val bodyStream = response.body?.byteStream() ?: return@use
                     val parsed = FeedParser.parse(bodyStream, feed.xmlUrl)
-                    val resolvedTitle = if (feed.title == feed.xmlUrl && parsed.title.isNotBlank()) {
-                        parsed.title
-                    } else {
-                        feed.title
-                    }
+                    val resolvedTitle = parsed.title.ifBlank { feed.title }
                     dao.updateFeedMetadata(
                         feedId = feed.id,
                         title = resolvedTitle,

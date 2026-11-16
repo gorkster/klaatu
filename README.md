@@ -25,13 +25,20 @@ A modern, widget-first Android RSS/Atom feed reader built in **Kotlin**, inspire
 ## Development Environment Setup
 This repository is configured for local builds on Linux (Fedora) using user-space tools:
 - **JDK**: Eclipse Temurin JDK 21 (`~/.local/jdks/jdk-21`)
-- **Android SDK**: `~/Android/Sdk` (`cmdline-tools`, `platform-tools`, `platforms;android-35`, `build-tools;35.0.0`)
+- **Android SDK**: `~/Android/Sdk` (`cmdline-tools`, `platform-tools`, `emulator`, `platforms;android-35`, `build-tools;35.0.0`, `system-images;android-35;google_apis;x86_64`)
+- **AVD**: `klaatu_pixel` (Pixel 7, Android 15 / API 35)
 - **Environment variables** (added to `~/.zshrc`):
   ```bash
   export JAVA_HOME="$HOME/.local/jdks/jdk-21"
   export ANDROID_HOME="$HOME/Android/Sdk"
-  export PATH="$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+  export PATH="$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH"
   ```
+
+### Running on the Emulator
+```bash
+emulator -avd klaatu_pixel &
+./gradlew installDebug
+```
 
 ### Building from the Command Line
 ```bash

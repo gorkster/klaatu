@@ -325,12 +325,25 @@ private fun WidgetConfigRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .size(16.dp)
+                .size(20.dp)
                 .clip(CircleShape)
-                .background(config.theme.headerBg),
-        )
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(config.theme.headerBg),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(config.theme.cardBg),
+            )
+        }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

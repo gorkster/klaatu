@@ -216,12 +216,25 @@ private fun WidgetConfigScreen(
                                 .clickable { selectedTheme = preset }
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
-                            Box(
+                            Column(
                                 modifier = Modifier
-                                    .size(14.dp)
+                                    .size(18.dp)
                                     .clip(CircleShape)
-                                    .background(preset.headerBg),
-                            )
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                        .background(preset.headerBg),
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                        .background(preset.cardBg),
+                                )
+                            }
                             Spacer(Modifier.width(6.dp))
                             Text(preset.displayName, style = MaterialTheme.typography.labelLarge)
                         }

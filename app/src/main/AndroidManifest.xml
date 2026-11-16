@@ -14,46 +14,12 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Klaatu" />
-
-        <activity-alias
-            android:name=".LauncherOpt1"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@mipmap/ic_launcher_opt1"
-            android:roundIcon="@mipmap/ic_launcher_opt1"
-            android:targetActivity=".MainActivity">
+            android:theme="@style/Theme.Klaatu">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LauncherOpt2"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@mipmap/ic_launcher_opt2"
-            android:roundIcon="@mipmap/ic_launcher_opt2"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LauncherOpt3"
-            android:enabled="true"
-            android:exported="true"
-            android:icon="@mipmap/ic_launcher_opt3"
-            android:roundIcon="@mipmap/ic_launcher_opt3"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
+        </activity>
 
         <receiver
             android:name=".widget.KlaatuWidgetReceiver"

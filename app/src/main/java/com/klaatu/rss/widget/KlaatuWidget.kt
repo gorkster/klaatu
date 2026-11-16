@@ -88,7 +88,7 @@ class KlaatuWidget : GlanceAppWidget() {
             listOf(
                 WidgetArticleUi(
                     id = -1L,
-                    title = "No articles yet — tap ⋮ to import an OPML file or add feeds",
+                    title = "No articles yet — tap the gear icon to import an OPML file or add feeds",
                     source = "Klaatu",
                     timeAgo = "Ready",
                     url = "https://github.com/sengelbert/klaatu",
@@ -224,7 +224,7 @@ private fun KlaatuWidgetContent(
             )
             Spacer(modifier = GlanceModifier.width(4.dp))
             Image(
-                provider = ImageProvider(R.drawable.ic_more_vert),
+                provider = ImageProvider(R.drawable.ic_settings),
                 contentDescription = "Open Klaatu settings",
                 colorFilter = ColorFilter.tint(headerTitleColor),
                 modifier = GlanceModifier

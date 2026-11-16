@@ -34,6 +34,8 @@ class FeedRepository(context: Context) {
     fun observeFeeds(): Flow<List<FeedEntity>> = dao.observeFeeds()
     fun observeCategories(): Flow<List<String>> = dao.observeCategories()
     fun observeTotalArticleCount(): Flow<Int> = dao.observeTotalArticleCount()
+    fun observeArticles(category: String?, limit: Int = 150): Flow<List<ArticleWithFeed>> =
+        dao.observeArticles(category, limit)
 
     suspend fun importOpml(inputStream: InputStream): Int = withContext(Dispatchers.IO) {
         val parsed = OpmlCodec.parse(inputStream)

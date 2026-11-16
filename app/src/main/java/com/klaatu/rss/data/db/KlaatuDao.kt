@@ -67,6 +67,18 @@ interface KlaatuDao {
         feedIds: List<Long>,
     ): Int
 
+    @Query(
+        """
+        SELECT a.id, a.title, a.link, a.imageUrl, a.publishedAt, f.title AS feedTitle, f.category AS category
+        FROM articles a
+        INNER JOIN feeds f ON a.feedId = f.id
+        WHERE (:category IS NULL OR f.category = :category)
+        ORDER BY a.publishedAt DESC
+        LIMIT :limit
+        """
+    )
+    fun observeArticles(category: String?, limit: Int = 150): Flow<List<ArticleWithFeed>>
+
     @Query("SELECT COUNT(*) FROM articles")
     fun observeTotalArticleCount(): Flow<Int>
 }

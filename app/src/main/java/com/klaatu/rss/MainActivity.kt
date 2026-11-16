@@ -3,7 +3,9 @@ package com.klaatu.rss
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.text.format.DateUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -17,6 +19,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,7 +40,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +52,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -55,6 +62,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -66,6 +74,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,7 +83,9 @@ import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import coil.compose.AsyncImage
 import com.klaatu.rss.data.FeedRepository
+import com.klaatu.rss.data.db.ArticleWithFeed
 import com.klaatu.rss.data.db.FeedEntity
 import com.klaatu.rss.sync.FeedSyncWorker
 import com.klaatu.rss.widget.KlaatuWidget
@@ -84,6 +95,11 @@ import com.klaatu.rss.widget.WidgetConfigActivity
 import com.klaatu.rss.widget.WidgetPreferences
 import com.klaatu.rss.widget.WidgetThemeMode
 import kotlinx.coroutines.launch
+
+private enum class AppTab {
+    FEED,
+    MANAGE,
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,7 +124,14 @@ private fun KlaatuCompanionScreen() {
     val snackbarHostState = remember { SnackbarHostState() }
 
     val feeds by repo.observeFeeds().collectAsState(initial = emptyList())
+    val categories by repo.observeCategories().collectAsState(initial = emptyList())
     val articleCount by repo.observeTotalArticleCount().collectAsState(initial = 0)
+
+    var currentTab by remember { mutableStateOf(AppTab.FEED) }
+    var selectedFeedCategory by remember { mutableStateOf<String?>(null) }
+    val articles by remember(selectedFeedCategory) {
+        repo.observeArticles(selectedFeedCategory)
+    }.collectAsState(initial = emptyList())
 
     var activeWidgets by remember { mutableStateOf(loadActiveWidgets(context)) }
     var refreshMinutes by remember { mutableStateOf(WidgetPreferences.getRefreshIntervalMinutes(context)) }
@@ -124,6 +147,18 @@ private fun KlaatuCompanionScreen() {
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val triggerSync: () -> Unit = {
+        if (!isSyncing) {
+            scope.launch {
+                isSyncing = true
+                val synced = repo.syncAllFeeds()
+                KlaatuWidget().updateAll(context)
+                isSyncing = false
+                snackbarHostState.showSnackbar("Synced $synced feeds")
+            }
+        }
     }
 
     val importOpmlLauncher = rememberLauncherForActivityResult(
@@ -172,149 +207,84 @@ private fun KlaatuCompanionScreen() {
                 actions = {
                     IconButton(
                         enabled = !isSyncing,
-                        onClick = {
-                            scope.launch {
-                                isSyncing = true
-                                val synced = repo.syncAllFeeds()
-                                KlaatuWidget().updateAll(context)
-                                isSyncing = false
-                                snackbarHostState.showSnackbar("Synced $synced feeds")
-                            }
-                        },
+                        onClick = triggerSync,
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = "Sync feeds")
                     }
                 },
             )
         },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = currentTab == AppTab.FEED,
+                    onClick = { currentTab = AppTab.FEED },
+                    icon = { Icon(Icons.Default.RssFeed, contentDescription = "Feed") },
+                    label = { Text("Feed") },
+                )
+                NavigationBarItem(
+                    selected = currentTab == AppTab.MANAGE,
+                    onClick = { currentTab = AppTab.MANAGE },
+                    icon = { Icon(Icons.Default.Tune, contentDescription = "Manage") },
+                    label = { Text("Manage") },
+                )
+            }
+        },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddFeedDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add feed")
+            if (currentTab == AppTab.MANAGE) {
+                FloatingActionButton(onClick = { showAddFeedDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add feed")
+                }
             }
         },
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            // OPML Actions
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = { importOpmlLauncher.launch(arrayOf("*/*")) },
-                    ) {
-                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Import OPML")
-                    }
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = { exportOpmlLauncher.launch("klaatu-feeds.opml") },
-                    ) {
-                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Export OPML")
-                    }
-                }
+        when (currentTab) {
+            AppTab.FEED -> {
+                FeedReaderTab(
+                    modifier = Modifier.padding(innerPadding),
+                    categories = categories,
+                    selectedCategory = selectedFeedCategory,
+                    onSelectCategory = { selectedFeedCategory = it },
+                    articles = articles,
+                    isRefreshing = isSyncing,
+                    onRefresh = triggerSync,
+                    onOpenArticle = { article ->
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.link))
+                        context.startActivity(intent)
+                    },
+                    onGoToManage = { currentTab = AppTab.MANAGE },
+                )
             }
 
-            // Background Refresh Frequency
-            item {
-                RefreshFrequencySection(
-                    selectedMinutes = refreshMinutes,
-                    onSelect = { minutes ->
+            AppTab.MANAGE -> {
+                ManageTab(
+                    modifier = Modifier.padding(innerPadding),
+                    feeds = feeds,
+                    activeWidgets = activeWidgets,
+                    refreshMinutes = refreshMinutes,
+                    isSubscriptionsExpanded = isSubscriptionsExpanded,
+                    onToggleSubscriptions = { isSubscriptionsExpanded = !isSubscriptionsExpanded },
+                    onImportOpml = { importOpmlLauncher.launch(arrayOf("*/*")) },
+                    onExportOpml = { exportOpmlLauncher.launch("klaatu-feeds.opml") },
+                    onSelectRefreshMinutes = { minutes ->
                         refreshMinutes = minutes
                         WidgetPreferences.setRefreshIntervalMinutes(context, minutes)
                         FeedSyncWorker.schedulePeriodic(context, minutes)
                     },
+                    onOpenWidgetConfig = { appWidgetId ->
+                        val intent = Intent(context, WidgetConfigActivity::class.java).apply {
+                            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                        }
+                        context.startActivity(intent)
+                    },
+                    onDeleteFeed = { feedId ->
+                        scope.launch {
+                            repo.deleteFeed(feedId)
+                            KlaatuWidget().updateAll(context)
+                        }
+                    },
                 )
             }
-
-            // Active Widgets Section
-            item {
-                Text("Home Screen Widgets", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(4.dp))
-                if (activeWidgets.isEmpty()) {
-                    Text(
-                        "No widgets placed yet. Long-press your home screen → Widgets → Klaatu Feed to add one or more widgets.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            if (activeWidgets.isNotEmpty()) {
-                items(activeWidgets, key = { it.appWidgetId }) { widgetConfig ->
-                    WidgetConfigRow(
-                        config = widgetConfig,
-                        onClick = {
-                            val intent = Intent(context, WidgetConfigActivity::class.java).apply {
-                                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetConfig.appWidgetId)
-                            }
-                            context.startActivity(intent)
-                        },
-                    )
-                }
-            }
-
-            item {
-                HorizontalDivider()
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = feeds.isNotEmpty()) {
-                            isSubscriptionsExpanded = !isSubscriptionsExpanded
-                        }
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "Individual Feeds (${feeds.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (feeds.isNotEmpty()) {
-                        Icon(
-                            imageVector = if (isSubscriptionsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = if (isSubscriptionsExpanded) "Collapse feeds" else "Expand feeds",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            if (feeds.isEmpty()) {
-                item {
-                    Text(
-                        "No feeds yet. Import an OPML file or tap + to add an RSS/Atom feed.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp),
-                    )
-                }
-            } else if (isSubscriptionsExpanded) {
-                items(feeds, key = { it.id }) { feed ->
-                    FeedRow(
-                        feed = feed,
-                        onDelete = {
-                            scope.launch {
-                                repo.deleteFeed(feed.id)
-                                KlaatuWidget().updateAll(context)
-                            }
-                        },
-                    )
-                }
-            }
-
-            item { Spacer(Modifier.height(72.dp)) }
         }
     }
 
@@ -337,6 +307,290 @@ private fun KlaatuCompanionScreen() {
                 }
             },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FeedReaderTab(
+    modifier: Modifier = Modifier,
+    categories: List<String>,
+    selectedCategory: String?,
+    onSelectCategory: (String?) -> Unit,
+    articles: List<ArticleWithFeed>,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    onOpenArticle: (ArticleWithFeed) -> Unit,
+    onGoToManage: () -> Unit,
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        if (categories.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = selectedCategory == null,
+                    onClick = { onSelectCategory(null) },
+                    label = { Text("All Feeds") },
+                )
+                categories.forEach { category ->
+                    FilterChip(
+                        selected = selectedCategory == category,
+                        onClick = {
+                            onSelectCategory(if (selectedCategory == category) null else category)
+                        },
+                        label = { Text(category) },
+                    )
+                }
+            }
+        }
+
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            if (articles.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "No stories yet",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Import an OPML file or add RSS feeds in the Manage tab.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedButton(onClick = onGoToManage) {
+                        Text("Open Manage")
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                ) {
+                    items(articles, key = { it.id }) { article ->
+                        ArticleListRow(
+                            article = article,
+                            onClick = { onOpenArticle(article) },
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArticleListRow(
+    article: ArticleWithFeed,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (!article.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = article.imageUrl,
+                contentDescription = article.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(width = 96.dp, height = 68.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(width = 96.dp, height = 68.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.RssFeed,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = article.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = article.feedTitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = formatRelativeTime(article.publishedAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+private fun formatRelativeTime(publishedAt: Long): String {
+    if (publishedAt <= 0L) return ""
+    return DateUtils.getRelativeTimeSpanString(
+        publishedAt,
+        System.currentTimeMillis(),
+        DateUtils.MINUTE_IN_MILLIS,
+        DateUtils.FORMAT_ABBREV_RELATIVE,
+    ).toString()
+}
+
+@Composable
+private fun ManageTab(
+    modifier: Modifier = Modifier,
+    feeds: List<FeedEntity>,
+    activeWidgets: List<WidgetConfig>,
+    refreshMinutes: Long,
+    isSubscriptionsExpanded: Boolean,
+    onToggleSubscriptions: () -> Unit,
+    onImportOpml: () -> Unit,
+    onExportOpml: () -> Unit,
+    onSelectRefreshMinutes: (Long) -> Unit,
+    onOpenWidgetConfig: (Int) -> Unit,
+    onDeleteFeed: (Long) -> Unit,
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // OPML Actions
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = onImportOpml,
+                ) {
+                    Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Import OPML")
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = onExportOpml,
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Export OPML")
+                }
+            }
+        }
+
+        // Background Refresh Frequency
+        item {
+            RefreshFrequencySection(
+                selectedMinutes = refreshMinutes,
+                onSelect = onSelectRefreshMinutes,
+            )
+        }
+
+        // Active Widgets Section
+        item {
+            Text("Home Screen Widgets", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            if (activeWidgets.isEmpty()) {
+                Text(
+                    "No widgets placed yet. Long-press your home screen → Widgets → Klaatu Feed to add one or more widgets.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        if (activeWidgets.isNotEmpty()) {
+            items(activeWidgets, key = { it.appWidgetId }) { widgetConfig ->
+                WidgetConfigRow(
+                    config = widgetConfig,
+                    onClick = { onOpenWidgetConfig(widgetConfig.appWidgetId) },
+                )
+            }
+        }
+
+        item {
+            HorizontalDivider()
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = feeds.isNotEmpty(), onClick = onToggleSubscriptions)
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Individual Feeds (${feeds.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                if (feeds.isNotEmpty()) {
+                    Icon(
+                        imageVector = if (isSubscriptionsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (isSubscriptionsExpanded) "Collapse feeds" else "Expand feeds",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        if (feeds.isEmpty()) {
+            item {
+                Text(
+                    "No feeds yet. Import an OPML file or tap + to add an RSS/Atom feed.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 16.dp),
+                )
+            }
+        } else if (isSubscriptionsExpanded) {
+            items(feeds, key = { it.id }) { feed ->
+                FeedRow(
+                    feed = feed,
+                    onDelete = { onDeleteFeed(feed.id) },
+                )
+            }
+        }
+
+        item { Spacer(Modifier.height(72.dp)) }
     }
 }
 

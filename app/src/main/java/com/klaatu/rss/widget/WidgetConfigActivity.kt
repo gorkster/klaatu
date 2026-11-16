@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -122,6 +123,7 @@ private fun WidgetConfigScreen(
     val categories by repo.observeCategories().collectAsState(initial = emptyList())
 
     var selectedTheme by remember { mutableStateOf(initialConfig.theme) }
+    var selectedThemeMode by remember { mutableStateOf(initialConfig.themeMode) }
     var selectedCategories by remember { mutableStateOf(initialConfig.categories) }
     var selectedFeedIds by remember { mutableStateOf(initialConfig.feedIds) }
     var customLabel by remember { mutableStateOf(initialConfig.customLabel) }
@@ -155,6 +157,7 @@ private fun WidgetConfigScreen(
                                 WidgetConfig(
                                     appWidgetId = initialConfig.appWidgetId,
                                     theme = selectedTheme,
+                                    themeMode = selectedThemeMode,
                                     categories = selectedCategories,
                                     feedIds = selectedFeedIds,
                                     customLabel = customLabel,
@@ -196,6 +199,26 @@ private fun WidgetConfigScreen(
             }
 
             item {
+                val systemDark = isSystemInDarkTheme()
+                val previewDark = when (selectedThemeMode) {
+                    WidgetThemeMode.SYSTEM -> systemDark
+                    WidgetThemeMode.LIGHT -> false
+                    WidgetThemeMode.DARK -> true
+                }
+
+                Text("Appearance", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WidgetThemeMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = mode == selectedThemeMode,
+                            onClick = { selectedThemeMode = mode },
+                            label = { Text(mode.displayName) },
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
                 Text("Color Theme", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
                 Row(
@@ -204,6 +227,7 @@ private fun WidgetConfigScreen(
                 ) {
                     WidgetThemePreset.entries.forEach { preset ->
                         val isSelected = preset == selectedTheme
+                        val palette = preset.paletteFor(previewDark)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -226,13 +250,13 @@ private fun WidgetConfigScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .weight(1f)
-                                        .background(preset.headerBg),
+                                        .background(palette.headerBg),
                                 )
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .weight(1f)
-                                        .background(preset.cardBg),
+                                        .background(palette.cardBg),
                                 )
                             }
                             Spacer(Modifier.width(6.dp))

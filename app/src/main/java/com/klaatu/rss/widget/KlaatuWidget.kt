@@ -45,7 +45,6 @@ import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
@@ -129,6 +128,7 @@ class KlaatuWidget : GlanceAppWidget() {
             GlanceTheme {
                 KlaatuWidgetContent(
                     theme = config.theme,
+                    themeMode = config.themeMode,
                     subtitle = subtitle,
                     isRefreshing = isRefreshing,
                     configIntent = configIntent,
@@ -178,19 +178,20 @@ class KlaatuWidget : GlanceAppWidget() {
 @Composable
 private fun KlaatuWidgetContent(
     theme: WidgetThemePreset,
+    themeMode: WidgetThemeMode,
     subtitle: String,
     isRefreshing: Boolean,
     configIntent: Intent,
     articles: List<WidgetArticleUi>,
 ) {
-    val headerBg = ColorProvider(theme.headerBg)
-    val headerTitleColor = ColorProvider(theme.headerTitle)
-    val headerSubtitleColor = ColorProvider(theme.headerSubtitle)
-    val cardBg = ColorProvider(theme.cardBg)
-    val primaryText = ColorProvider(theme.primaryText)
-    val secondaryText = ColorProvider(theme.secondaryText)
-    val dividerColor = ColorProvider(theme.divider)
-    val placeholderBg = ColorProvider(theme.placeholderBg)
+    val headerBg = theme.colorProvider(themeMode) { it.headerBg }
+    val headerTitleColor = theme.colorProvider(themeMode) { it.headerTitle }
+    val headerSubtitleColor = theme.colorProvider(themeMode) { it.headerSubtitle }
+    val cardBg = theme.colorProvider(themeMode) { it.cardBg }
+    val primaryText = theme.colorProvider(themeMode) { it.primaryText }
+    val secondaryText = theme.colorProvider(themeMode) { it.secondaryText }
+    val dividerColor = theme.colorProvider(themeMode) { it.divider }
+    val placeholderBg = theme.colorProvider(themeMode) { it.placeholderBg }
 
     Column(
         modifier = GlanceModifier

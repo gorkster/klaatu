@@ -5,6 +5,7 @@ import android.content.Context
 data class WidgetConfig(
     val appWidgetId: Int,
     val theme: WidgetThemePreset = WidgetThemePreset.MATERIAL_BLUE,
+    val themeMode: WidgetThemeMode = WidgetThemeMode.SYSTEM,
     val categories: Set<String> = emptySet(),
     val feedIds: Set<Long> = emptySet(),
     val customLabel: String = "",
@@ -26,6 +27,7 @@ object WidgetPreferences {
     private const val PREFS_NAME = "klaatu_widget_prefs"
 
     private fun themeKey(id: Int) = "theme_id_$id"
+    private fun themeModeKey(id: Int) = "theme_mode_$id"
     private fun categoriesKey(id: Int) = "categories_$id"
     private fun feedIdsKey(id: Int) = "feed_ids_$id"
     private fun labelKey(id: Int) = "label_$id"
@@ -34,6 +36,7 @@ object WidgetPreferences {
     fun getConfig(context: Context, appWidgetId: Int): WidgetConfig {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val theme = WidgetThemePreset.fromId(prefs.getString(themeKey(appWidgetId), null))
+        val themeMode = WidgetThemeMode.fromId(prefs.getString(themeModeKey(appWidgetId), null))
         val categories = prefs.getStringSet(categoriesKey(appWidgetId), emptySet()).orEmpty().toSet()
         val feedIds = prefs.getStringSet(feedIdsKey(appWidgetId), emptySet())
             .orEmpty()
@@ -43,6 +46,7 @@ object WidgetPreferences {
         return WidgetConfig(
             appWidgetId = appWidgetId,
             theme = theme,
+            themeMode = themeMode,
             categories = categories,
             feedIds = feedIds,
             customLabel = label,
@@ -54,6 +58,7 @@ object WidgetPreferences {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(themeKey(id), config.theme.id)
+            .putString(themeModeKey(id), config.themeMode.id)
             .putStringSet(categoriesKey(id), config.categories)
             .putStringSet(feedIdsKey(id), config.feedIds.map { it.toString() }.toSet())
             .putString(labelKey(id), config.customLabel.trim())
@@ -64,6 +69,7 @@ object WidgetPreferences {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .remove(themeKey(appWidgetId))
+            .remove(themeModeKey(appWidgetId))
             .remove(categoriesKey(appWidgetId))
             .remove(feedIdsKey(appWidgetId))
             .remove(labelKey(appWidgetId))

@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +77,7 @@ import com.klaatu.rss.widget.KlaatuWidgetReceiver
 import com.klaatu.rss.widget.WidgetConfig
 import com.klaatu.rss.widget.WidgetConfigActivity
 import com.klaatu.rss.widget.WidgetPreferences
+import com.klaatu.rss.widget.WidgetThemeMode
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -316,6 +318,12 @@ private fun WidgetConfigRow(
             else -> "${config.feedIds.size} Feed(s)"
         }
     }
+    val isDark = when (config.themeMode) {
+        WidgetThemeMode.SYSTEM -> isSystemInDarkTheme()
+        WidgetThemeMode.LIGHT -> false
+        WidgetThemeMode.DARK -> true
+    }
+    val palette = config.theme.paletteFor(isDark)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -335,13 +343,13 @@ private fun WidgetConfigRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(config.theme.headerBg),
+                    .background(palette.headerBg),
             )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(config.theme.cardBg),
+                    .background(palette.cardBg),
             )
         }
         Spacer(Modifier.width(12.dp))
@@ -353,7 +361,7 @@ private fun WidgetConfigRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "Widget #${config.appWidgetId} · ${config.theme.displayName}",
+                text = "Widget #${config.appWidgetId} · ${config.theme.displayName} (${config.themeMode.displayName})",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

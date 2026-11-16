@@ -18,6 +18,19 @@ enum class WidgetThemeMode(
     }
 }
 
+enum class WidgetHeaderStyle(
+    val id: String,
+    val displayName: String,
+) {
+    BOLD("bold", "Bold"),
+    TONAL("tonal", "Light Tonal");
+
+    companion object {
+        fun fromId(id: String?): WidgetHeaderStyle =
+            entries.firstOrNull { it.id == id } ?: BOLD
+    }
+}
+
 data class ThemePalette(
     val headerBg: Color,
     val headerTitle: Color,
@@ -33,6 +46,7 @@ enum class WidgetThemePreset(
     val id: String,
     val displayName: String,
     val light: ThemePalette,
+    val tonalLight: ThemePalette,
     val dark: ThemePalette,
 ) {
     MATERIAL_BLUE(
@@ -47,6 +61,16 @@ enum class WidgetThemePreset(
             secondaryText = Color(0xFF4A5E75),
             divider = Color(0xFFDCE6F2),
             placeholderBg = Color(0xFFE1ECF8),
+        ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFD3E3FD),
+            headerTitle = Color(0xFF0B2545),
+            headerSubtitle = Color(0xFF355178),
+            cardBg = Color(0xFFF8FBFF),
+            primaryText = Color(0xFF101C2B),
+            secondaryText = Color(0xFF4A5E75),
+            divider = Color(0xFFE1EAF5),
+            placeholderBg = Color(0xFFE7F0FA),
         ),
         dark = ThemePalette(
             headerBg = Color(0xFF0D3B73),
@@ -72,6 +96,16 @@ enum class WidgetThemePreset(
             divider = Color(0xFFD7EAE7),
             placeholderBg = Color(0xFFDDF0ED),
         ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFC9ECE6),
+            headerTitle = Color(0xFF052924),
+            headerSubtitle = Color(0xFF2D5953),
+            cardBg = Color(0xFFF7FCFB),
+            primaryText = Color(0xFF0E201E),
+            secondaryText = Color(0xFF45635F),
+            divider = Color(0xFFDCEEEB),
+            placeholderBg = Color(0xFFE3F3F0),
+        ),
         dark = ThemePalette(
             headerBg = Color(0xFF004038),
             headerTitle = Color(0xFFE5F7F4),
@@ -95,6 +129,16 @@ enum class WidgetThemePreset(
             secondaryText = Color(0xFF4E5578),
             divider = Color(0xFFDFE2F2),
             placeholderBg = Color(0xFFE4E7F6),
+        ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFDADFF7),
+            headerTitle = Color(0xFF131A45),
+            headerSubtitle = Color(0xFF3F487A),
+            cardBg = Color(0xFFF9FAFE),
+            primaryText = Color(0xFF12162B),
+            secondaryText = Color(0xFF4E5578),
+            divider = Color(0xFFE4E7F5),
+            placeholderBg = Color(0xFFEAECF9),
         ),
         dark = ThemePalette(
             headerBg = Color(0xFF1E2448),
@@ -120,6 +164,16 @@ enum class WidgetThemePreset(
             divider = Color(0xFFD9EAD9),
             placeholderBg = Color(0xFFE0EFE1),
         ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFD1ECD3),
+            headerTitle = Color(0xFF0C2B10),
+            headerSubtitle = Color(0xFF335937),
+            cardBg = Color(0xFFF8FCF8),
+            primaryText = Color(0xFF112113),
+            secondaryText = Color(0xFF49634B),
+            divider = Color(0xFFDFEFE0),
+            placeholderBg = Color(0xFFE6F3E7),
+        ),
         dark = ThemePalette(
             headerBg = Color(0xFF133A2A),
             headerTitle = Color(0xFFE8F7F0),
@@ -143,6 +197,16 @@ enum class WidgetThemePreset(
             secondaryText = Color(0xFF734D43),
             divider = Color(0xFFF2DFD8),
             placeholderBg = Color(0xFFF6E5DF),
+        ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFF8D8CE),
+            headerTitle = Color(0xFF3D1307),
+            headerSubtitle = Color(0xFF753D2D),
+            cardBg = Color(0xFFFFFAF8),
+            primaryText = Color(0xFF2B140E),
+            secondaryText = Color(0xFF734D43),
+            divider = Color(0xFFF5E5DF),
+            placeholderBg = Color(0xFFF9ECE7),
         ),
         dark = ThemePalette(
             headerBg = Color(0xFF5C1E0B),
@@ -168,6 +232,16 @@ enum class WidgetThemePreset(
             divider = Color(0xFFE9DCF2),
             placeholderBg = Color(0xFFEEE3F6),
         ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFEAD4F7),
+            headerTitle = Color(0xFF2A0B3D),
+            headerSubtitle = Color(0xFF5B3573),
+            cardBg = Color(0xFFFCF9FE),
+            primaryText = Color(0xFF21102B),
+            secondaryText = Color(0xFF634873),
+            divider = Color(0xFFEEE3F5),
+            placeholderBg = Color(0xFFF3EBF9),
+        ),
         dark = ThemePalette(
             headerBg = Color(0xFF3B1257),
             headerTitle = Color(0xFFF5ECFC),
@@ -191,6 +265,16 @@ enum class WidgetThemePreset(
             secondaryText = Color(0xFF6E593D),
             divider = Color(0xFFF0E4CE),
             placeholderBg = Color(0xFFF5EAD6),
+        ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFF9E1BE),
+            headerTitle = Color(0xFF361F02),
+            headerSubtitle = Color(0xFF6E4B1D),
+            cardBg = Color(0xFFFFFCF6),
+            primaryText = Color(0xFF281B08),
+            secondaryText = Color(0xFF6E593D),
+            divider = Color(0xFFF3EAD7),
+            placeholderBg = Color(0xFFF7EFE0),
         ),
         dark = ThemePalette(
             headerBg = Color(0xFF4F2E05),
@@ -216,6 +300,16 @@ enum class WidgetThemePreset(
             divider = Color(0xFFF1DCE4),
             placeholderBg = Color(0xFFF6E3EA),
         ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFF7D2E1),
+            headerTitle = Color(0xFF3B091E),
+            headerSubtitle = Color(0xFF70324D),
+            cardBg = Color(0xFFFFF8FA),
+            primaryText = Color(0xFF2A0F1B),
+            secondaryText = Color(0xFF704658),
+            divider = Color(0xFFF4E2E9),
+            placeholderBg = Color(0xFFF8E9EF),
+        ),
         dark = ThemePalette(
             headerBg = Color(0xFF570D2E),
             headerTitle = Color(0xFFFFECF3),
@@ -239,6 +333,16 @@ enum class WidgetThemePreset(
             secondaryText = Color(0xFF516068),
             divider = Color(0xFFDFE5E8),
             placeholderBg = Color(0xFFE4EAED),
+        ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFD8E1E6),
+            headerTitle = Color(0xFF141D22),
+            headerSubtitle = Color(0xFF42525B),
+            cardBg = Color(0xFFF9FAFB),
+            primaryText = Color(0xFF141B1F),
+            secondaryText = Color(0xFF516068),
+            divider = Color(0xFFE3E8EB),
+            placeholderBg = Color(0xFFEAEFF2),
         ),
         dark = ThemePalette(
             headerBg = Color(0xFF1E262B),
@@ -264,6 +368,16 @@ enum class WidgetThemePreset(
             divider = Color(0xFFE5E7EB),
             placeholderBg = Color(0xFFF1F3F5),
         ),
+        tonalLight = ThemePalette(
+            headerBg = Color(0xFFE5E7EB),
+            headerTitle = Color(0xFF111317),
+            headerSubtitle = Color(0xFF4B5563),
+            cardBg = Color(0xFFFFFFFF),
+            primaryText = Color(0xFF111317),
+            secondaryText = Color(0xFF5F6368),
+            divider = Color(0xFFE5E7EB),
+            placeholderBg = Color(0xFFF3F4F6),
+        ),
         dark = ThemePalette(
             headerBg = Color(0xFF181A20),
             headerTitle = Color(0xFFF1F3F4),
@@ -276,14 +390,25 @@ enum class WidgetThemePreset(
         ),
     );
 
-    fun paletteFor(isDark: Boolean): ThemePalette = if (isDark) dark else light
+    fun paletteFor(isDark: Boolean, headerStyle: WidgetHeaderStyle = WidgetHeaderStyle.BOLD): ThemePalette =
+        when {
+            isDark -> dark
+            headerStyle == WidgetHeaderStyle.TONAL -> tonalLight
+            else -> light
+        }
 
-    fun colorProvider(mode: WidgetThemeMode, selector: (ThemePalette) -> Color): ColorProvider =
-        when (mode) {
-            WidgetThemeMode.SYSTEM -> DayNightColorProvider(day = selector(light), night = selector(dark))
-            WidgetThemeMode.LIGHT -> ColorProvider(selector(light))
+    fun colorProvider(
+        mode: WidgetThemeMode,
+        headerStyle: WidgetHeaderStyle,
+        selector: (ThemePalette) -> Color,
+    ): ColorProvider {
+        val dayPalette = if (headerStyle == WidgetHeaderStyle.TONAL) tonalLight else light
+        return when (mode) {
+            WidgetThemeMode.SYSTEM -> DayNightColorProvider(day = selector(dayPalette), night = selector(dark))
+            WidgetThemeMode.LIGHT -> ColorProvider(selector(dayPalette))
             WidgetThemeMode.DARK -> ColorProvider(selector(dark))
         }
+    }
 
     companion object {
         fun fromId(id: String?): WidgetThemePreset = when (id) {

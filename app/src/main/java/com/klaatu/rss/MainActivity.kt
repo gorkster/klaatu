@@ -323,7 +323,7 @@ private fun WidgetConfigRow(
         WidgetThemeMode.LIGHT -> false
         WidgetThemeMode.DARK -> true
     }
-    val palette = config.theme.paletteFor(isDark)
+    val palette = config.theme.paletteFor(isDark, config.headerStyle)
     Row(
         modifier = Modifier
             .fillMaxWidth()

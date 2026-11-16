@@ -124,6 +124,7 @@ private fun WidgetConfigScreen(
 
     var selectedTheme by remember { mutableStateOf(initialConfig.theme) }
     var selectedThemeMode by remember { mutableStateOf(initialConfig.themeMode) }
+    var selectedHeaderStyle by remember { mutableStateOf(initialConfig.headerStyle) }
     var selectedCategories by remember { mutableStateOf(initialConfig.categories) }
     var selectedFeedIds by remember { mutableStateOf(initialConfig.feedIds) }
     var customLabel by remember { mutableStateOf(initialConfig.customLabel) }
@@ -158,6 +159,7 @@ private fun WidgetConfigScreen(
                                     appWidgetId = initialConfig.appWidgetId,
                                     theme = selectedTheme,
                                     themeMode = selectedThemeMode,
+                                    headerStyle = selectedHeaderStyle,
                                     categories = selectedCategories,
                                     feedIds = selectedFeedIds,
                                     customLabel = customLabel,
@@ -218,6 +220,19 @@ private fun WidgetConfigScreen(
                     }
                 }
 
+                Spacer(Modifier.height(10.dp))
+                Text("Light Header Style", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WidgetHeaderStyle.entries.forEach { style ->
+                        FilterChip(
+                            selected = style == selectedHeaderStyle,
+                            onClick = { selectedHeaderStyle = style },
+                            label = { Text(style.displayName) },
+                        )
+                    }
+                }
+
                 Spacer(Modifier.height(12.dp))
                 Text("Color Theme", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
@@ -227,7 +242,7 @@ private fun WidgetConfigScreen(
                 ) {
                     WidgetThemePreset.entries.forEach { preset ->
                         val isSelected = preset == selectedTheme
-                        val palette = preset.paletteFor(previewDark)
+                        val palette = preset.paletteFor(previewDark, selectedHeaderStyle)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier

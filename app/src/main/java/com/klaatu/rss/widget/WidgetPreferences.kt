@@ -6,6 +6,7 @@ data class WidgetConfig(
     val appWidgetId: Int,
     val theme: WidgetThemePreset = WidgetThemePreset.MATERIAL_BLUE,
     val themeMode: WidgetThemeMode = WidgetThemeMode.SYSTEM,
+    val headerStyle: WidgetHeaderStyle = WidgetHeaderStyle.BOLD,
     val categories: Set<String> = emptySet(),
     val feedIds: Set<Long> = emptySet(),
     val customLabel: String = "",
@@ -28,6 +29,7 @@ object WidgetPreferences {
 
     private fun themeKey(id: Int) = "theme_id_$id"
     private fun themeModeKey(id: Int) = "theme_mode_$id"
+    private fun headerStyleKey(id: Int) = "header_style_$id"
     private fun categoriesKey(id: Int) = "categories_$id"
     private fun feedIdsKey(id: Int) = "feed_ids_$id"
     private fun labelKey(id: Int) = "label_$id"
@@ -37,6 +39,7 @@ object WidgetPreferences {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val theme = WidgetThemePreset.fromId(prefs.getString(themeKey(appWidgetId), null))
         val themeMode = WidgetThemeMode.fromId(prefs.getString(themeModeKey(appWidgetId), null))
+        val headerStyle = WidgetHeaderStyle.fromId(prefs.getString(headerStyleKey(appWidgetId), null))
         val categories = prefs.getStringSet(categoriesKey(appWidgetId), emptySet()).orEmpty().toSet()
         val feedIds = prefs.getStringSet(feedIdsKey(appWidgetId), emptySet())
             .orEmpty()
@@ -47,6 +50,7 @@ object WidgetPreferences {
             appWidgetId = appWidgetId,
             theme = theme,
             themeMode = themeMode,
+            headerStyle = headerStyle,
             categories = categories,
             feedIds = feedIds,
             customLabel = label,
@@ -59,6 +63,7 @@ object WidgetPreferences {
             .edit()
             .putString(themeKey(id), config.theme.id)
             .putString(themeModeKey(id), config.themeMode.id)
+            .putString(headerStyleKey(id), config.headerStyle.id)
             .putStringSet(categoriesKey(id), config.categories)
             .putStringSet(feedIdsKey(id), config.feedIds.map { it.toString() }.toSet())
             .putString(labelKey(id), config.customLabel.trim())
@@ -70,6 +75,7 @@ object WidgetPreferences {
             .edit()
             .remove(themeKey(appWidgetId))
             .remove(themeModeKey(appWidgetId))
+            .remove(headerStyleKey(appWidgetId))
             .remove(categoriesKey(appWidgetId))
             .remove(feedIdsKey(appWidgetId))
             .remove(labelKey(appWidgetId))

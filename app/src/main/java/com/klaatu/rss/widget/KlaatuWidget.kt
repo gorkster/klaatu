@@ -129,6 +129,7 @@ class KlaatuWidget : GlanceAppWidget() {
                 KlaatuWidgetContent(
                     theme = config.theme,
                     themeMode = config.themeMode,
+                    headerStyle = config.headerStyle,
                     subtitle = subtitle,
                     isRefreshing = isRefreshing,
                     configIntent = configIntent,
@@ -179,19 +180,20 @@ class KlaatuWidget : GlanceAppWidget() {
 private fun KlaatuWidgetContent(
     theme: WidgetThemePreset,
     themeMode: WidgetThemeMode,
+    headerStyle: WidgetHeaderStyle,
     subtitle: String,
     isRefreshing: Boolean,
     configIntent: Intent,
     articles: List<WidgetArticleUi>,
 ) {
-    val headerBg = theme.colorProvider(themeMode) { it.headerBg }
-    val headerTitleColor = theme.colorProvider(themeMode) { it.headerTitle }
-    val headerSubtitleColor = theme.colorProvider(themeMode) { it.headerSubtitle }
-    val cardBg = theme.colorProvider(themeMode) { it.cardBg }
-    val primaryText = theme.colorProvider(themeMode) { it.primaryText }
-    val secondaryText = theme.colorProvider(themeMode) { it.secondaryText }
-    val dividerColor = theme.colorProvider(themeMode) { it.divider }
-    val placeholderBg = theme.colorProvider(themeMode) { it.placeholderBg }
+    val headerBg = theme.colorProvider(themeMode, headerStyle) { it.headerBg }
+    val headerTitleColor = theme.colorProvider(themeMode, headerStyle) { it.headerTitle }
+    val headerSubtitleColor = theme.colorProvider(themeMode, headerStyle) { it.headerSubtitle }
+    val cardBg = theme.colorProvider(themeMode, headerStyle) { it.cardBg }
+    val primaryText = theme.colorProvider(themeMode, headerStyle) { it.primaryText }
+    val secondaryText = theme.colorProvider(themeMode, headerStyle) { it.secondaryText }
+    val dividerColor = theme.colorProvider(themeMode, headerStyle) { it.divider }
+    val placeholderBg = theme.colorProvider(themeMode, headerStyle) { it.placeholderBg }
 
     Column(
         modifier = GlanceModifier

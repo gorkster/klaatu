@@ -88,6 +88,7 @@ import com.klaatu.rss.data.FeedRepository
 import com.klaatu.rss.data.db.ArticleWithFeed
 import com.klaatu.rss.data.db.FeedEntity
 import com.klaatu.rss.sync.FeedSyncWorker
+import com.klaatu.rss.ui.theme.KlaatuTheme
 import com.klaatu.rss.widget.KlaatuWidget
 import com.klaatu.rss.widget.KlaatuWidgetReceiver
 import com.klaatu.rss.widget.WidgetConfig
@@ -107,7 +108,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         FeedSyncWorker.schedulePeriodic(this)
         setContent {
-            MaterialTheme {
+            KlaatuTheme {
                 KlaatuCompanionScreen()
             }
         }

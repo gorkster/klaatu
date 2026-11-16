@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import com.klaatu.rss.MainActivity
 import com.klaatu.rss.data.FeedRepository
+import com.klaatu.rss.ui.theme.KlaatuTheme
 import kotlinx.coroutines.launch
 
 class WidgetConfigActivity : ComponentActivity() {
@@ -88,7 +89,7 @@ class WidgetConfigActivity : ComponentActivity() {
         val initialConfig = WidgetPreferences.getConfig(this, appWidgetId)
 
         setContent {
-            MaterialTheme {
+            KlaatuTheme {
                 WidgetConfigScreen(
                     initialConfig = initialConfig,
                     onManageFeeds = {
